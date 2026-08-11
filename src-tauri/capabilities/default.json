@@ -1,0 +1,40 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "最小权限清单（§12.1）。每加一条都要能说出它对应哪个功能。",
+  "windows": ["main", "quick"],
+  "permissions": [
+    "core:default",
+
+    "core:window:allow-start-dragging",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close",
+    "core:window:allow-hide",
+    "core:window:allow-show",
+    "core:window:allow-set-focus",
+    "core:window:allow-is-maximized",
+    "core:window:allow-set-position",
+
+    "core:event:default",
+
+    "global-shortcut:default",
+    "dialog:allow-save",
+
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [{ "url": "https://*" }, { "url": "http://*" }]
+    }
+  ],
+  "comment": [
+    "§12.1 的清单里还有 tray:default / notification:default / autostart:default /",
+    "updater:default —— 它们对应的插件要到阶段五才装上，现在写进来会让 capability",
+    "校验失败。装插件时一并补。",
+    "",
+    "**不要**开 shell:allow-execute 或宽泛的 fs:allow-*。文件读写全部走自定义命令，",
+    "路径由 Rust 侧校验，杜绝前端传入任意路径。",
+    "",
+    "opener 限定到 http/https：其余 scheme（file://、ms-msdt:）会成为攻击面，",
+    "渲染层与 platform.js 各挡一道，这里是第三道。"
+  ]
+}

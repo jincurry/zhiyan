@@ -1,0 +1,25 @@
+{
+  "name": "zhiyan",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "知言 · 卡片笔记。前端不引入框架（§4.3），Vite 只用其 ESM 打包与 dev server。",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test \"src/test/**/*.test.js\"",
+    "tauri": "tauri",
+    "subset-fonts": "node scripts/subset-fonts.mjs"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.11",
+    "@tauri-apps/plugin-dialog": "^2.7",
+    "@tauri-apps/plugin-global-shortcut": "^2.3",
+    "@tauri-apps/plugin-opener": "^2.5"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11",
+    "vite": "^8.2"
+  }
+}

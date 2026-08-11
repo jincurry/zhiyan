@@ -11,24 +11,42 @@ env:
 
 jobs:
   frontend:
-    name: 前端（零依赖）
+    name: 前端
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # 没有 npm install 这一步——前端刻意没有依赖
-      - run: node --test "test/**/*.test.js"
-        working-directory: ui
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
 
-      - name: 前端不得出现内联事件处理器
-        # CSP 是 script-src 'self'，onclick 一律不执行。
-        # 加回来的话交互会静默失效，本地开发时（没有 CSP）却看不出来——
-        # 正是这种「本地好好的、打包后坏掉」最难查，所以在 CI 上把它钉死。
+      - name: 不得出现内联事件处理器
+        # CSP 是 script-src 'self'（§12.2），onclick 一律不执行。
+        # 加回来的话交互会静默失效，而本地开发时看不出来——
+        # 「本地好好的、打包后坏掉」最难查，所以在 CI 上钉死。
         run: |
-          if grep -rnE '<[a-zA-Z][^>]*\son[a-z]+\s*=' --include='*.html' ui/; then
+          if grep -rnE '<[a-zA-Z][^>]*\son[a-z]+\s*=' --include='*.html' src/; then
             echo "::error::发现内联事件处理器，它们在 CSP 下不会执行"
+            exit 1
+          fi
+
+      - name: invoke 只能出现在 store.js 与 platform.js
+        # §4.5/§6.1：store.js 是唯一的数据出口。散着调 invoke 迟早会有人
+        # 把全量片语拉到前端再 filter，那正是 IPC 边界要挡住的事。
+        run: |
+          if grep -rn "invoke(" src/js/ --include='*.js' \
+             | grep -v '^src/js/store.js:' | grep -v '^src/js/platform.js:'; then
+            echo "::error::invoke() 只允许出现在 store.js 与 platform.js 里"
+            exit 1
+          fi
+
+      - name: 生产构建不得含开发用 mock
+        run: |
+          if grep -rl "createMock" dist/ 2>/dev/null; then
+            echo "::error::mock 与样例数据被打进了生产包"
             exit 1
           fi
 
@@ -55,7 +73,12 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      # 发布构建必须开 sqlcipher，不开的话本地库是明文的（§10.2）
-      - run: cargo build -p zhiyan-app --features sqlcipher
+      # 发布构建必须开 sqlcipher，不开的话本地库是明文的（§9.2）
+      - run: cargo build --manifest-path src-tauri/Cargo.toml --features sqlcipher

@@ -1,0 +1,35 @@
+[package]
+name = "zhiyan"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+license = "Apache-2.0"
+description = "知言 · 卡片笔记"
+repository = "https://github.com/jincurry/zhiyan"
+
+[[bin]]
+name = "zhiyan"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = "2.6"
+
+[dependencies]
+tauri = "2.11"
+tauri-plugin-global-shortcut = "2.3"
+tauri-plugin-dialog = "2.7"
+tauri-plugin-opener = "2.5"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+thiserror = "2"
+uuid = { version = "1", features = ["v4", "serde"] }
+time = { version = "0.3", features = ["macros"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[features]
+default = []
+# 发布必须开：本地库整体加密（§9.2）。实体在阶段三接上。
+sqlcipher = []

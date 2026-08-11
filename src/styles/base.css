@@ -1,0 +1,49 @@
+*{box-sizing:border-box;margin:0;padding:0}
+/* UA 样式表给 [hidden] 的 display:none 会被任何作者的 display 规则盖掉
+   （.railbody{display:flex} 就是），原型用内联 style.display 绕过了这一点。
+   我们用 hidden 属性控制显隐，所以必须在这里把它钉死。 */
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,textarea,select{font:inherit}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-soft)}
+a:hover{border-bottom-color:var(--accent)}
+::selection{background:var(--accent-soft);color:var(--ink)}
+:focus-visible{outline:2px solid var(--ink);outline-offset:1px;border-radius:4px;
+  box-shadow:0 0 0 1px var(--paper)}
+
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+@media (max-width:1120px){.rail{display:none}}
+@media (max-width:780px){.side{display:none}.main-inner{padding:18px 14px 60px}
+  .group,.spine{padding-left:60px}.group::before,.spine::before{left:48px}.node{left:48px}.gdate{width:40px}}
+.main::-webkit-scrollbar,.side::-webkit-scrollbar,.railbody::-webkit-scrollbar,.plist::-webkit-scrollbar,.sheet-bd::-webkit-scrollbar{width:12px}
+.main::-webkit-scrollbar-thumb,.side::-webkit-scrollbar-thumb,.railbody::-webkit-scrollbar-thumb,
+.plist::-webkit-scrollbar-thumb,.sheet-bd::-webkit-scrollbar-thumb{background:var(--line);border-radius:9px;border:3px solid transparent;background-clip:padding-box}
+
+/* ── 两个窗口共用的组件 ───────────────────────── */
+/* 主窗口与速记浮窗共用的组件。
+   拆出来是因为浮窗是**独立的 WebView 文档**，它加载不到 shell.css 里的
+   侧栏与主区规则，却同样要用计数、存下按钮、键位标签与补全弹层。 */
+
+.kbd{font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--ink-3);
+  border:1px solid var(--line);border-radius:4px;padding:2px 6px;background:var(--card)}
+.kbd-btn{display:flex;align-items:center;gap:6px;padding:3px 8px 3px 10px;border-radius:4px;
+  border:1px solid var(--line);color:var(--ink-3);font-size:12px;transition:all .15s;background:var(--card)}
+.kbd-btn:hover{color:var(--ink);border-color:var(--ink-3)}
+.count{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.save{margin-left:auto;display:flex;align-items:center;gap:8px;background:var(--accent);color:#FBFBF8;
+  padding:6px 14px;border-radius:4px;font-size:13px;font-weight:500;transition:opacity .15s,transform .1s}
+html[data-theme="dark"] .save{color:#141618}
+.save:hover{opacity:.9}
+.save:active{transform:translateY(1px)}
+.save[disabled]{opacity:.35;cursor:default}
+.save .kbd{background:rgba(255,255,255,.16);border-color:transparent;color:inherit;opacity:.8}
+.ghost{font-size:12px;padding:5px 10px;border-radius:4px;border:1px solid var(--line);color:var(--ink-3);transition:all .15s}
+.ghost:hover{color:var(--ink);border-color:var(--ink-3)}
+.suggest{position:absolute;background:var(--card);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);
+  padding:5px;z-index:40;min-width:170px;display:none;max-height:210px;overflow-y:auto}
+.suggest.show{display:block}
+.suggest button{display:block;width:100%;text-align:left;padding:5px 9px;border-radius:5px;font-size:13px;
+  color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.suggest button:hover,.suggest button.hl{background:var(--card-2);color:var(--ink)}

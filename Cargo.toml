@@ -1,55 +1,6 @@
 [workspace]
 resolver = "2"
-members = [
-    "crates/zhiyan-app",
-    "crates/zhiyan-core",
-    "crates/zhiyan-crypto",
-    "crates/zhiyan-store",
-    "crates/zhiyan-sync",
-    "xtask",
-]
-
-[workspace.package]
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.82"
-license = "Apache-2.0"
-authors = ["Zhiyan"]
-repository = "https://github.com/jincurry/zhiyan"
-
-[workspace.dependencies]
-zhiyan-core = { path = "crates/zhiyan-core" }
-zhiyan-crypto = { path = "crates/zhiyan-crypto" }
-zhiyan-store = { path = "crates/zhiyan-store" }
-zhiyan-sync = { path = "crates/zhiyan-sync" }
-
-tauri = { version = "2.11", features = ["protocol-asset"] }
-tauri-build = "2.6"
-tauri-plugin-global-shortcut = "2.3"
-tauri-plugin-dialog = "2.7"
-tauri-plugin-opener = "2.5"
-
-anyhow = "1"
-thiserror = "2"
-uuid = { version = "1", features = ["v4", "serde"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-time = { version = "0.3", features = ["macros"] }
-
-# 加密：一律定长数组 + Zeroize（§9.2）
-argon2 = "0.5"
-hkdf = "0.12"
-sha2 = "0.10"
-hmac = "0.12"
-chacha20poly1305 = "0.10"
-zeroize = { version = "1", features = ["derive"] }
-rand = "0.8"
-subtle = "2"
-hex = "0.4"
-
-rusqlite = "0.32"
+members = ["src-tauri"]
 
 [profile.release]
 opt-level = 3

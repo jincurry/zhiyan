@@ -1,9 +1,10 @@
 /target
 **/target
-*.pdb
-*.zbk
 /dist
 /node_modules
-**/node_modules
-/crates/zhiyan-app/gen
+*.pdb
+*.zbk
+# 子集化字体由 scripts/subset-fonts.mjs 生成，各有分发许可，不入库
+/src/assets/fonts/*.woff2
+/src-tauri/gen
 .DS_Store
