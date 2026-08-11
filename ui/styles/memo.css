@@ -1,0 +1,89 @@
+/* 时间脊 */
+.group,.spine{position:relative;padding-left:78px}
+.group{padding-top:28px}
+.group::before,.spine::before{content:"";position:absolute;left:63px;top:0;bottom:0;width:1px;background:var(--line)}
+.group.now{padding-top:0}
+.group.now::before{top:19px}
+.group.now .gdate{top:12px}
+.group.now .node{top:19px;width:11px;height:11px;background:var(--card);border:1.5px solid var(--mark)}
+.group.now .node::after{content:"";position:absolute;inset:2px;border-radius:50%;background:var(--mark)}
+.spine{padding-top:18px;padding-bottom:2px}
+.group:last-child::before{bottom:auto;height:44px}
+.gdate{position:absolute;left:0;top:28px;width:56px;text-align:right;font-family:var(--mono);font-size:10.5px;
+  line-height:1.5;color:var(--ink-3);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.gdate .wd{display:block;font-size:9.5px;opacity:.7;letter-spacing:.1em}
+.node{position:absolute;left:63px;top:32px;border-radius:50%;background:var(--card);border:1.5px solid var(--accent);
+  transform:translate(-50%,-50%);transition:all .3s cubic-bezier(.2,.8,.2,1)}
+.node.today{background:var(--mark);border-color:var(--mark);box-shadow:0 0 0 4px var(--card),0 0 0 5px var(--line-soft)}
+.node.fill{background:var(--accent)}
+.group.pinned::before{background:repeating-linear-gradient(var(--mark) 0 3px,transparent 3px 6px)}
+.group.pinned .node{border-color:var(--mark);background:var(--card)}
+/* 卡片 */
+.memo{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 17px 10px;
+  margin-bottom:10px;position:relative;transition:box-shadow .2s,border-color .2s;
+  animation:rise .38s cubic-bezier(.2,.8,.2,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.memo:hover{box-shadow:var(--shadow);border-color:var(--line)}
+.memo.flash{border-color:var(--mark)}
+.memo .txt{font-family:var(--serif);font-size:var(--fs);line-height:1.82;color:var(--ink);
+  word-break:break-word;letter-spacing:.01em}
+.memo .txt>*+*{margin-top:.62em}
+.txt h2{font-size:1.14em;font-weight:600;letter-spacing:.02em}
+.txt h3{font-size:1.06em;font-weight:600}
+.txt h4{font-size:1em;font-weight:600;color:var(--ink-2)}
+.txt strong{font-weight:600}
+.txt em{font-style:italic}
+.txt del{color:var(--ink-3)}
+.txt mark{background:var(--mark-soft);color:var(--ink);padding:0 3px;border-radius:2px}
+.txt code{font-family:var(--mono);font-size:.84em;background:var(--card-3);padding:1px 5px;border-radius:4px}
+.txt pre{background:var(--card-3);border-radius:7px;padding:10px 13px;overflow-x:auto}
+.txt pre code{background:none;padding:0;font-size:.82em;line-height:1.6;display:block}
+.txt blockquote{border-left:2px solid var(--accent-soft);padding-left:13px;color:var(--ink-2);font-style:italic}
+.txt ul,.txt ol{padding-left:1.25em}
+.txt li{margin:.16em 0}
+.txt ul.todo{list-style:none;padding-left:2px}
+.txt ul.todo li{display:flex;gap:9px;align-items:flex-start}
+.ck{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--line);flex:none;margin-top:.42em;
+  display:grid;place-items:center;transition:all .15s}
+.ck:hover{border-color:var(--accent)}
+.ck.done{background:var(--accent);border-color:var(--accent)}
+.ck.done::after{content:"";width:7px;height:4px;border-left:1.6px solid var(--card);border-bottom:1.6px solid var(--card);
+  transform:rotate(-45deg) translate(1px,-1px)}
+.ck.done+span{color:var(--ink-3);text-decoration:line-through}
+.txt hr{border:none;border-top:1px solid var(--line);margin:.9em 0}
+.itag{color:var(--accent);border:none;cursor:pointer;font-size:.94em;padding:1px 2px;border-radius:3px}
+.itag:hover{background:var(--accent-dim)}
+.hit{background:var(--mark);color:var(--paper);border-radius:2px;padding:0 2px}
+.mimg{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px;margin-top:10px}
+.mimg img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:7px;border:1px solid var(--line-soft);
+  cursor:zoom-in;display:block}
+.rel{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+.rel a{display:flex;gap:8px;align-items:baseline;font-family:var(--sans);font-size:12px;color:var(--ink-2);
+  background:var(--card-2);padding:6px 10px;border-radius:6px;border:none;cursor:pointer;text-align:left}
+.rel a:hover{background:var(--card-3);color:var(--ink)}
+.rel a span{font-family:var(--mono);font-size:9.5px;color:var(--ink-3);flex:none}
+.rel a em{font-style:normal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rel .lab{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.mfoot{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line-soft)}
+.mtime{font-family:var(--mono);font-size:10px;color:var(--ink-3);font-variant-numeric:tabular-nums;display:flex;gap:6px;align-items:center}
+.src{font-size:9px;letter-spacing:.06em;border:1px solid var(--line);border-radius:3px;padding:0 3px;color:var(--ink-3)}
+.pinflag{color:var(--mark);font-size:10px}
+.mact{margin-left:auto;display:flex;gap:1px;opacity:0;transition:opacity .15s}
+.memo:hover .mact,.memo:focus-within .mact{opacity:1}
+.mact button{width:23px;height:23px;border-radius:4px;display:grid;place-items:center;color:var(--ink-3)}
+.mact button:hover{background:var(--card-2);color:var(--ink)}
+.mact button.dang:hover{color:var(--danger)}
+.mact button.on{color:var(--mark)}
+.empty{padding:56px 20px;text-align:center;color:var(--ink-3)}
+.empty p:first-child{font-family:var(--serif);font-size:16px;color:var(--ink-2);margin-bottom:6px}
+.empty p:last-child{font-size:13px}
+/* 行内引用 */
+.iref{color:var(--ink-2);background:var(--card-3);border:none;border-bottom:1px solid var(--line);
+  border-radius:4px;padding:1px 6px 1px 5px;font-family:var(--sans);font-size:.82em;cursor:pointer;
+  vertical-align:.06em;transition:all .13s}
+.iref::before{content:"❞ ";color:var(--ink-3);font-size:.85em}
+.iref:hover{background:var(--accent-dim);color:var(--accent)}
+.iref.dead{opacity:.5;cursor:default;text-decoration:line-through}
+.sugref{display:flex;gap:8px;align-items:baseline}
+.sugref span{font-family:var(--mono);font-size:9px;color:var(--ink-3);flex:none}
+.sugref em{font-style:normal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

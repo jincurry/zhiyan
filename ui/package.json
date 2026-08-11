@@ -1,0 +1,9 @@
+{
+  "name": "zhiyan-ui",
+  "private": true,
+  "type": "module",
+  "description": "知言前端。刻意零依赖：没有打包器、没有框架、没有 node_modules。",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\""
+  }
+}

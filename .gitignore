@@ -1,0 +1,9 @@
+/target
+**/target
+*.pdb
+*.zbk
+/dist
+/node_modules
+**/node_modules
+/crates/zhiyan-app/gen
+.DS_Store

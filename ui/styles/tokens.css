@@ -1,0 +1,59 @@
+/* ══ 内嵌字体（§5.7）══════════════════════════════════════════
+   为什么必须内嵌：不内嵌则中文回退到 SimSun——为 96dpi 点阵设计的老宋体，
+   放进 15.5px / 行高 1.82 的正文会糊成一片，整个设计的立足点消失。
+
+   woff2 由 xtask 从上游字体子集化生成，不入库（见 .gitignore）。
+   文件缺失时浏览器会静默走 font-family 里的回退链，界面仍可用但会失真。   */
+@font-face{font-family:"Source Han Serif SC";src:url("../fonts/SourceHanSerifSC-Regular.subset.woff2") format("woff2");
+  font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Source Han Serif SC";src:url("../fonts/SourceHanSerifSC-SemiBold.subset.woff2") format("woff2");
+  font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:"MiSans";src:url("../fonts/MiSans-Regular.subset.woff2") format("woff2");
+  font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"MiSans";src:url("../fonts/MiSans-Medium.subset.woff2") format("woff2");
+  font-weight:500;font-style:normal;font-display:swap}
+
+:root{
+  --paper:#FFFFFF; --chrome:#FAFAF9; --card:#FFFFFF; --card-2:#F5F6F3; --card-3:#EDEFEA;
+  --ink:#1B1E19; --ink-2:#565B52; --ink-3:#9AA096;
+  --line:#E2E5DF; --line-soft:#EDEFEA;
+  --accent:#2E5A49; --accent-soft:#CFDFD3; --accent-dim:#EAF1EB;
+  --mark:#8A6A1F; --mark-soft:#F3EAD2;
+  --danger:#9C4332;
+  --h0:#F1F2EE; --h1:#D6E4D8; --h2:#A5C2AD; --h3:#5C8B70; --h4:#2E5A49;
+  --shadow:0 1px 2px rgba(27,30,25,.04), 0 6px 20px -12px rgba(27,30,25,.14);
+  --shadow-lg:0 24px 60px -20px rgba(27,30,25,.28);
+  --serif:"Source Han Serif SC","Noto Serif SC","Source Han Serif CN",Georgia,"STZhongsong","SimSun",serif;
+  --sans:"Segoe UI Variable Text","Segoe UI","MiSans","Microsoft YaHei UI","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"Cascadia Mono","Cascadia Code",Consolas,"JetBrains Mono",ui-monospace,monospace;
+  --fs:15.5px;
+}
+html[data-theme="dark"]{
+  --paper:#141618; --chrome:#131517; --card:#1E2124; --card-2:#25282B; --card-3:#2B2F32;
+  --ink:#E7E8E3; --ink-2:#A9AEA5; --ink-3:#6D736B;
+  --line:#2E3236; --line-soft:#26292C;
+  --accent:#82AC92; --accent-soft:#2A3D34; --accent-dim:#232E28;
+  --mark:#C4A24E; --mark-soft:#3A3222;
+  --danger:#C97A63;
+  --h0:#212427; --h1:#2A3D34; --h2:#3D5C4B; --h3:#5C8B70; --h4:#82AC92;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  --shadow-lg:0 24px 60px -20px rgba(0,0,0,.75);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,textarea,select{font:inherit}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-soft)}
+a:hover{border-bottom-color:var(--accent)}
+::selection{background:var(--accent-soft);color:var(--ink)}
+:focus-visible{outline:2px solid var(--ink);outline-offset:1px;border-radius:4px;
+  box-shadow:0 0 0 1px var(--paper)}
+
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+@media (max-width:1120px){.rail{display:none}}
+@media (max-width:780px){.side{display:none}.main-inner{padding:18px 14px 60px}
+  .group,.spine{padding-left:60px}.group::before,.spine::before{left:48px}.node{left:48px}.gdate{width:40px}}
+.main::-webkit-scrollbar,.side::-webkit-scrollbar,.railbody::-webkit-scrollbar,.plist::-webkit-scrollbar,.sheet-bd::-webkit-scrollbar{width:12px}
+.main::-webkit-scrollbar-thumb,.side::-webkit-scrollbar-thumb,.railbody::-webkit-scrollbar-thumb,
+.plist::-webkit-scrollbar-thumb,.sheet-bd::-webkit-scrollbar-thumb{background:var(--line);border-radius:9px;border:3px solid transparent;background-clip:padding-box}

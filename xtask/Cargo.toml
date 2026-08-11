@@ -1,0 +1,11 @@
+[package]
+name = "xtask"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+description = "知言的构建任务：打包、签名"
+
+[dependencies]
+anyhow.workspace = true

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知言 — 卡片笔记</title>
+<link rel="stylesheet" href="styles/tokens.css">
+<link rel="stylesheet" href="styles/shell.css">
+<link rel="stylesheet" href="styles/memo.css">
+<link rel="stylesheet" href="styles/rail.css">
+<link rel="stylesheet" href="styles/overlays.css">
+<script type="module" src="src/main.js"></script>
+</head>
+<body>
+<!--
+  与原型的唯一结构性差异：**没有一个 onclick**。
+
+  CSP 是 `script-src 'self'`，内联事件处理器一律不执行。所有交互改走
+  `data-act` + 事件委托（见 src/actions.js）。这不是洁癖——放开 'unsafe-inline'
+  等于把 XSS 的主要防线拆掉，而正文是用户可控的 Markdown。
+-->
+<div class="win">
+  <div class="titlebar" data-tauri-drag-region>
+    <div class="tb-left" data-tauri-drag-region>
+      <span class="applogo">知</span><span class="appname">知言</span>
+    </div>
+    <div class="tb-mid" data-tauri-drag-region>
+      <button class="kbd-btn" data-act="palette">搜索与命令 <span class="kbd">Ctrl+K</span></button>
+    </div>
+    <div class="tb-right">
+      <button class="avabtn" id="avaBtn" title="账号" data-act="acct-menu">·</button>
+      <button class="iconbtn" title="设置" data-act="settings">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M21 12h-2M5 12H3M18.4 5.6l-1.4 1.4M7 17l-1.4 1.4M18.4 18.4L17 17M7 7L5.6 5.6"/></svg></button>
+      <button class="iconbtn" title="切换外观 Ctrl+D" data-act="theme">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg></button>
+    </div>
+    <div class="caption">
+      <button class="capbtn" title="最小化" data-act="win-min">
+        <svg width="10" height="10" viewBox="0 0 10 10"><rect x="0" y="4.5" width="10" height="1" fill="currentColor"/></svg></button>
+      <button class="capbtn" id="maxBtn" title="最大化" data-act="win-max">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="9" height="9"/></svg></button>
+      <button class="capbtn close" title="关闭" data-act="win-close">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor"><path d="M0 0l10 10M10 0L0 10"/></svg></button>
+    </div>
+  </div>
+
+  <div class="body">
+    <aside class="side">
+      <div class="search">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--ink-3);flex:none"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="q" placeholder="搜索片语  /" autocomplete="off">
+      </div>
+      <button class="navitem on" data-view="all" data-act="view" data-arg="all">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/></svg>
+        <span class="lbl">全部</span><span class="n" id="nAll">0</span></button>
+      <button class="navitem" data-view="today" data-act="view" data-arg="today">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 1.5"/></svg>
+        <span class="lbl">今日</span><span class="n" id="nToday">0</span></button>
+      <button class="navitem" data-view="untagged" data-act="view" data-arg="untagged">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 4l8 8-8 8-8-8z"/></svg>
+        <span class="lbl">未归类</span><span class="n" id="nUn">0</span></button>
+      <button class="navitem" data-view="trash" data-act="view" data-arg="trash">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13"/></svg>
+        <span class="lbl">回收站</span><span class="n" id="nTrash">0</span></button>
+      <div class="eyebrow">标签</div>
+      <div id="tagList"></div>
+      <div class="side-foot">
+        <div class="goal">
+          <span id="goalTxt">0 / 3</span>
+          <span class="goalbar"><i id="goalBar" style="width:0%"></i></span>
+        </div>
+        <!-- 同步五态：已同步 / 同步中 / N 条待上传 / 离线 / 冲突需处理。
+             同步类应用最伤信任的时刻，是用户不知道刚写的东西存没存上。 -->
+        <div class="syncline" id="syncLine" hidden></div>
+      </div>
+    </aside>
+
+    <main class="main" id="main">
+      <div class="main-inner">
+        <section class="group now">
+          <div class="gdate">此刻<span class="wd">NOW</span></div>
+          <div class="node"></div>
+          <div class="composer" id="composer">
+            <div class="mdbar">
+              <button title="粗体 Ctrl+B" data-act="wrap" data-arg="**"><b>B</b></button>
+              <button title="斜体 Ctrl+I" data-act="wrap" data-arg="*"><i style="font-family:var(--serif)">I</i></button>
+              <button title="删除线" data-act="wrap" data-arg="~~"><span style="text-decoration:line-through">S</span></button>
+              <button title="高亮" data-act="wrap" data-arg="=="><span style="background:var(--mark-soft);border-radius:2px;padding:0 2px">H</span></button>
+              <button title="行内代码" data-act="wrap" data-arg="`"><span style="font-family:var(--mono)">&lt;&gt;</span></button>
+              <span class="sep"></span>
+              <button title="标题" data-act="prefix" data-arg="## "><span style="font-family:var(--serif);font-weight:600">H</span></button>
+              <button title="引用" data-act="prefix" data-arg="&gt; ">❝</button>
+              <button title="无序列表" data-act="prefix" data-arg="- ">•</button>
+              <button title="有序列表" data-act="prefix" data-arg="1. ">1.</button>
+              <button title="待办" data-act="prefix" data-arg="- [ ] ">☐</button>
+              <button title="代码块" data-act="insert" data-arg="&#10;```&#10;&#10;```&#10;">▤</button>
+              <button title="分割线" data-act="insert" data-arg="&#10;---&#10;">—</button>
+              <span class="sep"></span>
+              <button title="标签" data-act="insert" data-arg="#">#</button>
+              <button title="引用另一条片语" data-act="insert" data-arg="[[">[[</button>
+              <button title="插入图片" data-act="pick-image">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-6 6"/></svg></button>
+              <span class="right">
+                <button id="pvBtn" title="预览" data-act="preview">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.4"/></svg></button>
+              </span>
+            </div>
+            <textarea id="input" rows="1" placeholder="此刻在想什么？支持 Markdown，用 # 归类。"></textarea>
+            <div id="preview" class="txt" hidden></div>
+            <div class="thumbs" id="thumbs"></div>
+            <div class="comp-foot">
+              <span class="count" id="count">0 字</span>
+              <button class="ghost" id="cancelBtn" hidden data-act="cancel-edit">放弃修改</button>
+              <button class="save" id="saveBtn" disabled data-act="save"><span id="saveTxt">存下</span> <span class="kbd">Ctrl+Enter</span></button>
+            </div>
+            <div class="suggest" id="suggest"></div>
+          </div>
+        </section>
+        <input type="file" id="file" accept="image/*" multiple hidden>
+
+        <div class="filterbar spine" id="filterbar"></div>
+        <div id="timeline"></div>
+      </div>
+    </main>
+
+    <aside class="rail">
+      <div class="railtabs">
+        <button id="tabRecall" class="on" data-act="tab" data-arg="recall">拾遗</button>
+        <button id="tabStats" data-act="tab" data-arg="stats">统计</button>
+      </div>
+      <div class="railbody" id="railRecall">
+        <div class="rail-title"><h2>拾遗</h2><span>Recall</span></div>
+        <p class="rail-sub">写下的东西只有回头看见才算数。</p>
+        <div class="recall" id="recall"></div>
+        <div class="recall-act">
+          <button data-act="recall-roll">换一条</button>
+          <button data-act="recall-jump">跳到原处</button>
+        </div>
+        <div class="eyebrow" style="padding:0;margin:22px 0 8px">每日回顾</div>
+        <div class="stat"><span class="k">今日已回顾</span><span class="v" id="rvDone">0</span></div>
+        <div class="stat"><span class="k">回顾范围</span><span class="v" style="font-size:12px" id="rvScope">全部</span></div>
+      </div>
+      <div class="railbody" id="railStats" hidden>
+        <div class="rail-title"><h2>记录</h2><span>Stats</span></div>
+        <p class="rail-sub">最近半年，每格一天。</p>
+        <button class="btn" style="width:100%;margin-bottom:14px" data-act="week" data-arg="0">本周回顾  Ctrl+Alt+R</button>
+        <div class="heat"><div class="heatgrid" id="heat"></div>
+          <div class="heatlegend">少 <i style="background:var(--h0)"></i><i style="background:var(--h1)"></i><i style="background:var(--h2)"></i><i style="background:var(--h3)"></i><i style="background:var(--h4)"></i> 多</div>
+        </div>
+        <div style="margin-top:16px">
+          <div class="stat"><span class="k">全部片语</span><span class="v" id="sAll">0</span></div>
+          <div class="stat"><span class="k">本周</span><span class="v" id="sWeek">0</span></div>
+          <div class="stat"><span class="k">连续记录</span><span class="v" id="sStreak">0</span></div>
+          <div class="stat"><span class="k">最长连续</span><span class="v" id="sMax">0</span></div>
+          <div class="stat"><span class="k">累计字数</span><span class="v" id="sChars">0</span></div>
+          <div class="stat"><span class="k">日均</span><span class="v" id="sAvg">0</span></div>
+        </div>
+        <div class="topbar">
+          <div class="eyebrow" style="padding:0;margin:14px 0 6px">标签分布</div>
+          <div id="topTags"></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="scrim" id="scrimPal" data-scrim>
+  <div class="sheet palette">
+    <input id="pq" placeholder="搜索片语，或输入命令…" autocomplete="off">
+    <div class="plist" id="plist"></div>
+  </div>
+</div>
+
+<div class="scrim" id="scrimSheet" data-scrim>
+  <div class="sheet">
+    <div class="sheet-hd"><h3 id="shTitle">设置</h3><button class="x" data-act="close-all">✕</button></div>
+    <div class="sheet-bd" id="shBody"></div>
+  </div>
+</div>
+
+<div class="menu" id="menu"></div>
+<div class="lightbox" id="lightbox" data-act="close-lightbox"><img id="lbImg" alt=""></div>
+<div class="toast" id="toast"></div>
+</body>
+</html>
