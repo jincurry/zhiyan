@@ -32,12 +32,16 @@ pub fn app_info() -> AppInfo {
 
 #[tauri::command]
 pub fn window_minimize(window: Window) -> AppResult<()> {
-    window.minimize().map_err(|e| AppError::Window(e.to_string()))
+    window
+        .minimize()
+        .map_err(|e| AppError::Window(e.to_string()))
 }
 
 #[tauri::command]
 pub fn window_toggle_maximize(window: Window) -> AppResult<bool> {
-    let maximized = window.is_maximized().map_err(|e| AppError::Window(e.to_string()))?;
+    let maximized = window
+        .is_maximized()
+        .map_err(|e| AppError::Window(e.to_string()))?;
     if maximized {
         window.unmaximize()
     } else {
@@ -62,9 +66,13 @@ pub fn window_hide(window: Window) -> AppResult<()> {
 /// 最小化时单独出现，也要能不进任务栏。
 #[tauri::command]
 pub fn quick_toggle(app: tauri::AppHandle) -> AppResult<bool> {
-    let quick = app.get_webview_window("quick").ok_or(AppError::NoSuchWindow("quick"))?;
+    let quick = app
+        .get_webview_window("quick")
+        .ok_or(AppError::NoSuchWindow("quick"))?;
 
-    let visible = quick.is_visible().map_err(|e| AppError::Window(e.to_string()))?;
+    let visible = quick
+        .is_visible()
+        .map_err(|e| AppError::Window(e.to_string()))?;
     if visible {
         quick.hide().map_err(|e| AppError::Window(e.to_string()))?;
         Ok(false)
@@ -72,7 +80,9 @@ pub fn quick_toggle(app: tauri::AppHandle) -> AppResult<bool> {
         // 顺序要紧：先摆位再显示，否则会看到窗口从上一次的位置跳过来
         position_on_cursor_monitor(&quick)?;
         quick.show().map_err(|e| AppError::Window(e.to_string()))?;
-        quick.set_focus().map_err(|e| AppError::Window(e.to_string()))?;
+        quick
+            .set_focus()
+            .map_err(|e| AppError::Window(e.to_string()))?;
         Ok(true)
     }
 }

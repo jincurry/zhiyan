@@ -40,6 +40,10 @@ html[data-theme="dark"]{
   --shadow-lg:0 24px 60px -20px rgba(0,0,0,.75);
 }
 *{box-sizing:border-box;margin:0;padding:0}
+/* UA 样式表给 [hidden] 的 display:none 会被任何作者的 display 规则盖掉
+   （.railbody{display:flex} 就是），原型用内联 style.display 绕过了这一点。
+   我们用 hidden 属性控制显隐，所以必须在这里把它钉死。 */
+[hidden]{display:none!important}
 html,body{height:100%}
 body{background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>知言 — 卡片笔记</title>
 <link rel="stylesheet" href="styles/tokens.css">
+<link rel="stylesheet" href="styles/components.css">
 <link rel="stylesheet" href="styles/shell.css">
 <link rel="stylesheet" href="styles/memo.css">
 <link rel="stylesheet" href="styles/rail.css">
@@ -16,8 +17,11 @@
   与原型的唯一结构性差异：**没有一个 onclick**。
 
   CSP 是 `script-src 'self'`，内联事件处理器一律不执行。所有交互改走
-  `data-act` + 事件委托（见 src/actions.js）。这不是洁癖——放开 'unsafe-inline'
-  等于把 XSS 的主要防线拆掉，而正文是用户可控的 Markdown。
+  `data-act` + 事件委托，分发表在 src/main.js 的 ACTIONS 里。这不是洁癖——
+  放开 'unsafe-inline' 等于把 XSS 的主要防线拆掉，而正文是用户可控的 Markdown。
+
+  附带好处：能做什么一目了然，就是那张表。攻击者即使能往 DOM 里塞属性，
+  也只能触发表里那几件事，且参数是字符串不是代码。
 -->
 <div class="win">
   <div class="titlebar" data-tauri-drag-region>

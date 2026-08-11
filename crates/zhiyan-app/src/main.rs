@@ -2,7 +2,10 @@
 //!
 //! `windows_subsystem = "windows"` 让发布构建不弹控制台窗口；debug 下保留控制台，
 //! 否则 `tracing` 的输出没地方看。
-#![cfg_attr(all(target_os = "windows", not(debug_assertions)), windows_subsystem = "windows")]
+#![cfg_attr(
+    all(target_os = "windows", not(debug_assertions)),
+    windows_subsystem = "windows"
+)]
 
 fn main() {
     init_tracing();

@@ -16,18 +16,11 @@ html[data-theme="dark"] .applogo{color:#141618}
 .capbtn.close:hover{background:#C42B1C;color:#fff}
 .capbtn.close:active{background:#D14B3D;color:#fff}
 .capbtn svg{shape-rendering:crispEdges}
-.kbd{font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--ink-3);
-  border:1px solid var(--line);border-radius:4px;padding:2px 6px;background:var(--card)}
-.kbd-btn{display:flex;align-items:center;gap:6px;padding:3px 8px 3px 10px;border-radius:4px;
-  border:1px solid var(--line);color:var(--ink-3);font-size:12px;transition:all .15s;background:var(--card)}
-.kbd-btn:hover{color:var(--ink);border-color:var(--ink-3)}
 .iconbtn{width:28px;height:28px;border-radius:4px;display:grid;place-items:center;color:var(--ink-3);
   transition:background .15s,color .15s}
 .iconbtn:hover{background:var(--card-2);color:var(--ink)}
 .iconbtn.on{color:var(--accent);background:var(--accent-dim)}
-
 .body{flex:1;display:flex;min-height:0}
-
 /* 侧栏 */
 .side{width:222px;flex:none;border-right:1px solid var(--line);display:flex;flex-direction:column;
   padding:14px 10px 0;overflow-y:auto;background:var(--chrome)}
@@ -65,11 +58,9 @@ html[data-theme="dark"] .applogo{color:#141618}
 .goal{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;color:var(--ink-3)}
 .goalbar{flex:1;height:3px;border-radius:2px;background:var(--line-soft);overflow:hidden}
 .goalbar i{display:block;height:100%;background:var(--accent);border-radius:2px;transition:width .5s cubic-bezier(.2,.8,.2,1)}
-
 /* 主区 */
 .main{flex:1;min-width:0;display:flex;flex-direction:column;overflow-y:auto;scroll-behavior:smooth}
 .main-inner{width:100%;max-width:672px;margin:0 auto;padding:24px 32px 90px}
-
 .composer{background:var(--card);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);
   transition:border-color .2s;overflow:visible;position:relative}
 .composer:focus-within{border-color:var(--accent-soft)}
@@ -87,28 +78,11 @@ html[data-theme="dark"] .applogo{color:#141618}
 #preview{padding:14px 18px 8px;min-height:78px;font-family:var(--serif);font-size:16px;line-height:1.78}
 .comp-foot{display:flex;align-items:center;gap:8px;padding:9px 12px 10px 14px;border-top:1px solid var(--line-soft);
   background:var(--card-2);border-radius:0 0 7px 7px}
-.count{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
-.save{margin-left:auto;display:flex;align-items:center;gap:8px;background:var(--accent);color:#FBFBF8;
-  padding:6px 14px;border-radius:4px;font-size:13px;font-weight:500;transition:opacity .15s,transform .1s}
-html[data-theme="dark"] .save{color:#141618}
-.save:hover{opacity:.9}
-.save:active{transform:translateY(1px)}
-.save[disabled]{opacity:.35;cursor:default}
-.save .kbd{background:rgba(255,255,255,.16);border-color:transparent;color:inherit;opacity:.8}
-.ghost{font-size:12px;padding:5px 10px;border-radius:4px;border:1px solid var(--line);color:var(--ink-3);transition:all .15s}
-.ghost:hover{color:var(--ink);border-color:var(--ink-3)}
 .thumbs{display:flex;gap:6px;flex-wrap:wrap;padding:0 18px 10px}
 .thumbs figure{position:relative;width:62px;height:62px;border-radius:7px;overflow:hidden;border:1px solid var(--line)}
 .thumbs img{width:100%;height:100%;object-fit:cover;display:block}
 .thumbs button{position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;
   background:rgba(20,22,24,.72);color:#fff;font-size:10px;line-height:1;display:grid;place-items:center}
-.suggest{position:absolute;background:var(--card);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);
-  padding:5px;z-index:40;min-width:170px;display:none;max-height:210px;overflow-y:auto}
-.suggest.show{display:block}
-.suggest button{display:block;width:100%;text-align:left;padding:5px 9px;border-radius:5px;font-size:13px;
-  color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.suggest button:hover,.suggest button.hl{background:var(--card-2);color:var(--ink)}
-
 .filterbar{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--ink-3)}
 .filterbar .fx{display:flex;align-items:center;gap:6px;background:var(--accent-dim);color:var(--accent);
   padding:3px 6px 3px 10px;border-radius:20px;font-size:12px}

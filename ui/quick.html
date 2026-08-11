@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<title>速记</title>
+<link rel="stylesheet" href="styles/tokens.css">
+<link rel="stylesheet" href="styles/components.css">
+<link rel="stylesheet" href="styles/quick.css">
+<style>
+/* 浮窗是独立窗口，不是主窗口里的一个 div，所以 .float 的定位与显隐交给窗口本身 */
+html,body{background:transparent;overflow:hidden}
+.float{position:static;width:100%;opacity:1;pointer-events:auto;transform:none}
+</style>
+<script type="module" src="src/quick.js"></script>
+</head>
+<body>
+<div class="float show" id="float">
+  <div class="fl-hd" data-tauri-drag-region>
+    <span class="grip"><i></i><i></i><i></i></span>
+    <b>速记</b>
+    <span class="k">Ctrl+Enter 存下 · Esc 收起</span>
+    <button class="cl" data-act="close">✕</button>
+  </div>
+  <textarea id="flInput" placeholder="记一句，然后回到刚才的事。"></textarea>
+  <div class="fl-ft">
+    <span class="count" id="flCount">0 字</span>
+    <span id="flTags" style="display:flex;gap:5px"></span>
+    <button class="save" id="flSave" disabled data-act="save">存下 <span class="kbd">Ctrl+Enter</span></button>
+  </div>
+  <div class="suggest" id="flSuggest"></div>
+</div>
+</body>
+</html>

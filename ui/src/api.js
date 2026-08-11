@@ -106,6 +106,66 @@ const mock = await (async () => {
       const m = memos.find((x) => x.id === id);
       if (m) m.pinned = pinned;
     },
+    async tagCounts() {
+      const { parseTags } = await import('./util.js');
+      const out = {};
+      for (const m of memos) for (const t of parseTags(m.text)) out[t] = (out[t] || 0) + 1;
+      return out;
+    },
+    async stats() {
+      const { parseTags, dayKey, countChars, heatLevel } = await import('./util.js');
+      const perDay = {};
+      const charsPerDay = {};
+      for (const m of memos) {
+        const k = dayKey(m.createdAt);
+        perDay[k] = (perDay[k] || 0) + 1;
+        charsPerDay[k] = (charsPerDay[k] || 0) + countChars(m.text);
+      }
+      const days = Object.keys(perDay).sort((a, b) => new Date(a) - new Date(b));
+
+      // 今天还没写不算断——早上打开应用就看到归零，是在惩罚用户还没开始写
+      let current = 0;
+      const cur = new Date();
+      cur.setHours(0, 0, 0, 0);
+      if (!perDay[dayKey(cur.getTime())]) cur.setDate(cur.getDate() - 1);
+      while (perDay[dayKey(cur.getTime())]) { current++; cur.setDate(cur.getDate() - 1); }
+
+      let longest = 0, run = 0, prev = null;
+      for (const k of days) {
+        const d = new Date(k);
+        run = prev && (d - prev) / 864e5 <= 1.5 ? run + 1 : 1;
+        longest = Math.max(longest, run);
+        prev = d;
+      }
+
+      const totalChars = memos.reduce((a, m) => a + countChars(m.text), 0);
+      const span = days.length ? Math.max(1, Math.round((Date.now() - new Date(days[0])) / 864e5)) : 1;
+      const week = Date.now() - 7 * 864e5;
+
+      // 热力图：最近 26 周，按日返回，档位由 Rust 侧算好
+      const heat = [];
+      const end = new Date();
+      end.setHours(0, 0, 0, 0);
+      end.setDate(end.getDate() + (6 - end.getDay()));
+      for (let i = 181; i >= 0; i--) {
+        const d = new Date(end);
+        d.setDate(d.getDate() - i);
+        const k = dayKey(d.getTime());
+        const n = perDay[k] || 0;
+        heat.push({ day: k, at: d.getTime(), count: n, level: heatLevel(n) });
+      }
+
+      return {
+        total: memos.length,
+        week: memos.filter((m) => m.createdAt > week).length,
+        streak: current,
+        longest,
+        chars: totalChars,
+        perDayAvg: memos.length / span,
+        charsPerDay,
+        heat,
+      };
+    },
     async counts() {
       const { parseTags, isToday } = await import('./util.js');
       return {
@@ -139,6 +199,17 @@ export const purgeMemo = (id) => call('purge_memo', 'purge', id);
 export const emptyTrash = () => call('empty_trash', 'emptyTrash');
 export const setPinned = (id, pinned) => call('set_pinned', 'setPinned', id, pinned);
 export const viewCounts = () => call('view_counts', 'counts');
+
+/**
+ * 标签 → 片语数。侧栏的两级标签树从它构建。
+ *
+ * 由 Rust 侧 `GROUP BY` 出来，而不是前端遍历全量正文再 `parseTags`——
+ * 后者要求前端持有全部片语，正是这道边界要挡住的事。
+ */
+export const tagCounts = () => call('tag_counts', 'tagCounts');
+
+/** 统计与热力图。同样在 Rust 侧聚合完再过来。 */
+export const stats = () => call('stats', 'stats');
 
 // ── 应用 ────────────────────────────────────────────────────────
 
