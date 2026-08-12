@@ -20,10 +20,11 @@ zhiyan/
 ├─ src-tauri/
 │  ├─ src/                  # main / windows / error / state
 │  ├─ crypto/               # §8 密钥体系（独立 crate，不依赖 Tauri）
-│  ├─ db/                   # §9 SQLCipher（独立 crate）
+│  ├─ db/                   # §9 存储：schema / memo / stats / blobstore / backup / parse
 │  ├─ capabilities/         # Tauri 2 权限
 │  └─ tauri.conf.json
-└─ scripts/subset-fonts.mjs
+├─ tests/fixtures/          # 前后端共用的对照表
+└─ scripts/                 # subset-fonts / gen-parse-fixtures
 ```
 
 ## 前后端怎么分（§4.4）
@@ -45,7 +46,20 @@ npm install
 npm run dev                    # Vite dev server，浏览器里就能开（走内存 mock）
 npm test                       # 前端单测
 cargo test -p zhiyan-crypto    # 加密层，秒级（不依赖 Tauri）
+cargo test -p zhiyan-db        # 存储层，秒级（同上）
 npm run tauri dev              # 完整应用
+```
+
+存储层默认跑普通 SQLite（编译快）。**加密路径要单独跑一遍**：
+
+```sh
+cargo test -p zhiyan-db --features sqlcipher
+```
+
+改过标签 / 引用 / 字数的规则之后，重新生成前后端的对照表：
+
+```sh
+node scripts/gen-parse-fixtures.mjs && cargo test -p zhiyan-db && npm test
 ```
 
 Linux 上跑需要 WebKitGTK：
@@ -80,6 +94,13 @@ npm run tauri build -- --features sqlcipher
 - **组合串未上屏时屏蔽所有快捷键**（§6.2）。打拼音时的回车是选词，不是保存。
 - **记录主键用 UUIDv4**，不用 ULID / UUIDv7：后两者前 48 位是明文时间戳。
 - **正文类型手写 `Debug`**，错误对象也不带正文——它们会穿过 IPC 落进 WebView 日志。
+- **彻底删除写墓碑，不物理删**（§7.3 ②）。物理删的话 A 机删干净、B 机不知道，
+  下次同步又推回来——「删不掉的笔记」是同步应用最经典的 bug。
+- **`PRAGMA key` 在普通 SQLite 上被静默忽略**，库照开、数据照写，只是全是明文。
+  所以加密状态是运行时探测（`PRAGMA cipher_version`）出来的，不靠编译期 feature 猜。
+- **标签 / 引用 / 字数有两份实现**（`util.js` 与 `zhiyan-db::parse`），
+  用 `tests/fixtures/parse-parity.json` 这张共用对照表钉死。分叉的表现是
+  「界面上高亮的标签点侧栏筛不出来」，很难查。
 
 上面几条里能被静态检查挡住的，CI 里都挡了。
 
@@ -89,7 +110,7 @@ npm run tauri build -- --features sqlcipher
 |---|---|---|
 | 一 | Tauri 骨架 + 前端从原型落地 | ✅ |
 | 二 | 密钥体系 / 信封 / 恢复码（§8） | ✅ `src-tauri/crypto` |
-| 三 | SQLCipher / FTS5 / 墓碑 / blob（§9） | |
+| 三 | SQLCipher / FTS5 / 墓碑 / blob / 备份（§7、§9） | ✅ `src-tauri/db` |
 | 四 | IPC 命令层接线 + UUID 迁移 + `zhiyan://` 协议 | |
 | 五 | 全局热键 / 托盘 / Snap Layouts / 前台焦点 / 打包（§5、§11） | |
 

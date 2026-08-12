@@ -68,6 +68,13 @@ jobs:
       - run: cargo clippy --workspace --all-targets
       - run: cargo test --workspace
 
+      - name: 存储层在真正的 SQLCipher 上也要过
+        # 默认 feature 跑的是普通 SQLite，PRAGMA key 会被**静默忽略**——
+        # 库照开、数据照写，只是全是明文。所以「开了加密还能不能正常工作」
+        # 必须真跑一遍，光 build 过是不够的：
+        # zhiyan-db 里那条「加密状态是运行时探测出来的」在这里断言它确实是 true。
+        run: cargo test -p zhiyan-db --features sqlcipher
+
   windows:
     name: Windows 构建烟测
     runs-on: windows-latest

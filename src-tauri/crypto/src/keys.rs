@@ -89,6 +89,10 @@ key_newtype!(
     /// 单个附件的内容加密密钥（收敛派生，§8.5）。
     ContentKey
 );
+key_newtype!(
+    /// 加密本地 `.zbk` 备份（§9.7）。
+    BackupKey
+);
 
 /// Argon2id 参数。
 ///
@@ -200,6 +204,19 @@ impl DataKey {
         Ok(InboxKey::from_bytes(expand(
             self.as_bytes(),
             b"zhiyan/v1/inbox",
+        )?))
+    }
+
+    /// `HKDF(DEK,"backup")`：本地 `.zbk` 备份（§9.7）。
+    ///
+    /// **§8.2 的清单里没有这一档，是补的。** §9.7 只说备份「用 DEK 加密」。
+    /// 直接拿 DEK 当对称密钥用，等于让备份文件与其他任何将来也「用 DEK」的东西
+    /// 共用一把密钥——密钥复用是这类系统里最常见的退化路径，而多派生一层
+    /// 的代价是一次 HKDF。
+    pub fn backup_key(&self) -> Result<BackupKey> {
+        Ok(BackupKey::from_bytes(expand(
+            self.as_bytes(),
+            b"zhiyan/v1/backup",
         )?))
     }
 }
@@ -319,6 +336,7 @@ mod tests {
         let record = dek.record_key().unwrap();
         let db = dek.db_key().unwrap();
         let inbox = dek.inbox_key().unwrap();
+        let backup = dek.backup_key().unwrap();
 
         let all: Vec<&[u8; KEY_LEN]> = vec![
             auth.as_bytes(),
@@ -326,6 +344,7 @@ mod tests {
             record.as_bytes(),
             db.as_bytes(),
             inbox.as_bytes(),
+            backup.as_bytes(),
         ];
         for (i, a) in all.iter().enumerate() {
             for b in all.iter().skip(i + 1) {

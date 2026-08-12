@@ -33,6 +33,7 @@ subtle = "2"
 hex = "0.4"
 
 rusqlite = "0.32"
+zstd = "0.13"
 
 [profile.release]
 opt-level = 3

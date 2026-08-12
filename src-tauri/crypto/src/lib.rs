@@ -34,8 +34,8 @@ pub mod recovery;
 
 pub use envelope::{open, seal, seal_with_nonce, Envelope, Identity};
 pub use keys::{
-    derive_master_key, AuthKey, DataKey, DbKey, InboxKey, KdfParams, KeyEncryptionKey, MasterKey,
-    RecordKey, KDF_SALT_LEN, KEY_LEN,
+    derive_master_key, AuthKey, BackupKey, DataKey, DbKey, InboxKey, KdfParams, KeyEncryptionKey,
+    MasterKey, RecordKey, KDF_SALT_LEN, KEY_LEN,
 };
 pub use recovery::{RecoveryCode, RECOVERY_GROUPS, RECOVERY_GROUP_LEN};
 
