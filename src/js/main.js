@@ -245,6 +245,22 @@ const ACTIONS = {
   theme: toggleTheme,
   palette: () => palette.openPalette(),
   settings: () => openSettings(),
+  'hk-capture': (arg) => startCapture(arg),
+  'hk-toggle': async (arg) => {
+    const cur = (await platform.hotkeyList()).find((h) => h.slot === arg);
+    if (!cur) return;
+    await platform.hotkeyRebind(arg, cur.combo, !cur.enabled).catch(() => {});
+    openSettings();
+  },
+  autostart: async (arg) => {
+    try {
+      const st = await platform.autostartSet(arg === '1');
+      ov.toast(st.effective ? '已开启开机自启' : '已关闭开机自启');
+    } catch {
+      ov.toast('设置自启失败');
+    }
+    openSettings();
+  },
   'acct-menu': (_, __, ev) =>
     ov.menu(ev.clientX - 100, ev.clientY + 10, [
       { label: '偏好设置…', act: 'settings' },
@@ -352,18 +368,91 @@ const ACTIONS = {
 
 const memoIdOf = (el) => el.closest('.memo')?.dataset.id;
 
-function openSettings() {
+/** 当前正在录制的热键功能位。非 null 时全局键盘事件被这个输入框独占。 */
+let capturing = null;
+
+/**
+ * 更新状态那一行。
+ *
+ * 「已是最新」与「这个构建不检查更新」必须是两句话。混成一句的话，
+ * 用户会以为自己装的是最新版，而实际上他永远收不到更新。
+ */
+function updateLine(u) {
+  if (!u) return '更新：检查失败';
+  if (!u.configured) return '更新：此构建未配置更新源，需要手动下载新版';
+  return u.available ? `有新版本 ${esc(u.version ?? '')}，重启后生效` : '更新：已是最新';
+}
+
+function hotkeyRow(h) {
+  const label = h.slot === 'quick' ? '速记浮窗' : '显示 / 隐藏主窗口';
+  // registered 为 false 而 enabled 为真 = 被别的程序占了。
+  // 常见占用方：搜狗输入法、QQ、PowerToys、Ditto
+  const bad = h.enabled && !h.registered;
+  return (
+    `<div class="field hkrow" data-slot="${esc(h.slot)}">` +
+    `<label>${label}</label>` +
+    `<button class="btn hkbtn${bad ? ' bad' : ''}" data-act="hk-capture" data-arg="${esc(h.slot)}">` +
+    `${h.enabled ? esc(platform.shortcutLabel(h.combo)) : '未启用'}</button>` +
+    `<button class="btn" data-act="hk-toggle" data-arg="${esc(h.slot)}">${h.enabled ? '关闭' : '启用'}</button>` +
+    (bad ? '<p class="hint bad">已被其他程序占用，换一个组合键</p>' : '') +
+    '</div>'
+  );
+}
+
+async function openSettings() {
   ov.closeMenu();
+  const [info, hotkeys, autostart, runtime, update] = await Promise.all([
+    store.appInfo().catch(() => null),
+    platform.hotkeyList().catch(() => []),
+    platform.autostartGet().catch(() => ({ configured: false, effective: false })),
+    platform.runtimeReport().catch(() => null),
+    platform.checkUpdate().catch(() => null),
+  ]);
+
+  // 「已加密」这一项**只按运行时探测的结果显示**。显示一个假的比不显示更糟：
+  // 用户会据此决定要不要把库放进网盘
+  const encrypted = info?.encryptedStore
+    ? '<span class="ok">已加密</span>'
+    : '<span class="bad">未加密</span>（这个构建没开 sqlcipher）';
+
+  // configured 与 effective 不一致 = 用户在「设置 → 应用 → 启动」里关掉了。
+  // 只显示 configured 的话就会出现「开关是开的但没自启」
+  const autoNote =
+    autostart.configured && !autostart.effective
+      ? '<p class="hint bad">注册表项还在，但被 Windows 的「启动」设置禁用了。要去系统设置里打开。</p>'
+      : '';
+
+  const gaps = platform.featureGaps();
+  const runtimeNote =
+    gaps.length || runtime?.chromiumOk === false
+      ? `<p class="hint bad">WebView2 版本偏低${runtime?.webview2 ? `（${esc(runtime.webview2)}）` : ''}，
+           ${gaps.length ? esc(gaps.join('、')) + ' 不可用，' : ''}界面会有明显异常。请更新 Microsoft Edge。</p>`
+      : '';
+
   ov.sheet(
     '偏好设置',
     `<div class="field"><label>每日目标</label>
        <input type="number" id="setGoal" min="1" max="50" value="${state.goal}"></div>
      <div class="field"><label>正文字号</label>
        <input type="range" id="setFs" min="13" max="20" step="0.5" value="${state.fontSize}"></div>
-     <p class="hint" style="margin-top:12px">
-       本地库加密状态与同步设置要等后面的阶段接上。这里显示的都是真实生效的值——
+
+     <div class="seg">全局热键</div>
+     ${hotkeys.map(hotkeyRow).join('') || '<p class="hint">浏览器里没有全局热键。</p>'}
+
+     <div class="seg">系统</div>
+     <div class="field"><label>开机自启</label>
+       <button class="btn" data-act="autostart" data-arg="${autostart.effective ? '0' : '1'}">
+         ${autostart.effective ? '已开启' : '未开启'}</button></div>
+     ${autoNote}
+
+     <div class="seg">本机</div>
+     <p class="hint">本地库：${encrypted}　版本 ${esc(info?.version ?? '—')}</p>
+     ${runtimeNote}
+     <p class="hint">${updateLine(update)}</p>
+     <p class="hint">同步与账号在 §10，还没做。这里显示的都是真实生效的值——
        宁可少显示一项，也不显示一个假的「已加密」。</p>`
   );
+
   $('setGoal').addEventListener('change', (e) => {
     state.goal = Math.max(1, Number(e.target.value) || 1);
     savePrefs();
@@ -374,6 +463,37 @@ function openSettings() {
     savePrefs();
     document.documentElement.style.setProperty('--fs', state.fontSize + 'px');
   });
+}
+
+/**
+ * 录制一个新的组合键。
+ *
+ * 边按边试：Rust 侧**先试注册、成功才保存**，所以这里拿到的失败是真的
+ * 「抢不到」，而不是「格式不对」。
+ */
+function startCapture(slot) {
+  capturing = slot;
+  const btn = document.querySelector(`.hkrow[data-slot="${slot}"] .hkbtn`);
+  if (btn) {
+    btn.textContent = '按下新的组合键…';
+    btn.classList.add('capturing');
+  }
+}
+
+async function finishCapture(e) {
+  const combo = platform.comboFromEvent(e);
+  if (!combo) return; // 还只按着修饰键，继续等
+  e.preventDefault();
+  const slot = capturing;
+  capturing = null;
+  try {
+    await platform.hotkeyRebind(slot, combo, true);
+    ov.toast('已改为 ' + platform.shortcutLabel(combo));
+  } catch (err) {
+    // 被占用时旧键位会被 Rust 侧接回去，用户不至于既丢了新键也丢了旧键
+    ov.toast(err?.code === 'hotkey' ? '这个组合键已被其他程序占用' : '改键失败');
+  }
+  openSettings();
 }
 
 // ── 事件委托 ────────────────────────────────────────────────────
@@ -419,6 +539,25 @@ document.addEventListener('mouseover', (e) => {
   const item = e.target.closest('.pitem[data-arg]');
   if (item) palette.highlightRow(Number(item.dataset.arg));
 });
+
+// ── 后端事件（§5.4 / §5.5）──────────────────────────────────────
+
+if (platform.inTauri) {
+  // 热键被别的程序占了。**必须可见**：静默失败会让用户以为软件坏了——
+  // 按下去没反应，又没有任何提示，只能得出「这功能是假的」这个结论
+  platform.onEvent('hotkey-conflict', (c) => {
+    ov.toast(`热键 ${platform.shortcutLabel(c.combo)} 被占用`, '改键', () => openSettings());
+  });
+  // 托盘菜单里的两项
+  platform.onEvent('open-week', () => openWeek(0));
+  platform.onEvent('open-settings', () => openSettings());
+  // Snap Layouts 接管了那块区域之后 DOM 收不到 hover，高亮只能由 Rust 通知
+  platform.onEvent('maxbutton-hover', (on) => {
+    $('maxBtn')?.classList.toggle('hover', !!on);
+  });
+  // 缩放变了，上报的逻辑矩形要重算
+  platform.onEvent('dpi-changed', () => reportMaxButton());
+}
 
 // ── 键盘 ────────────────────────────────────────────────────────
 
@@ -474,6 +613,9 @@ $('pq').addEventListener('keydown', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
+  // 录制组合键时独占键盘：不独占的话按下 Ctrl+K 会顺手把命令面板打开
+  if (capturing) { finishCapture(e); return; }
+
   // 同上：打拼音的过程中不该触发命令面板、切换主题这些
   if (e.isComposing || ed.isComposing()) return;
 

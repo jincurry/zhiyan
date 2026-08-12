@@ -36,6 +36,15 @@ pub enum AppError {
     /// 那个值可能就是用户的正文。
     #[error("参数 {0} 不合法")]
     BadArgument(&'static str),
+
+    /// 全局热键注册失败（§5.4）。**必须能被前端看见**：
+    /// 静默失败会让用户以为软件坏了——按下去没反应，又没有任何提示。
+    #[error("热键：{0}")]
+    Hotkey(String),
+
+    /// Tauri 自身的错误（建托盘、建菜单一类）。
+    #[error("窗口系统：{0}")]
+    Tauri(#[from] tauri::Error),
 }
 
 /// 序列化成前端能分辨的形状：`{ code, message }`。
@@ -64,6 +73,8 @@ impl AppError {
             AppError::Vault(_) => "vault",
             AppError::Locked => "locked",
             AppError::BadArgument(_) => "bad_argument",
+            AppError::Hotkey(_) => "hotkey",
+            AppError::Tauri(_) => "tauri",
         }
     }
 }

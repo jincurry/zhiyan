@@ -18,13 +18,15 @@ zhiyan/
 │  ├─ test/                 # node --test
 │  └─ assets/fonts/         # 子集化 woff2（不入库）
 ├─ src-tauri/
-│  ├─ src/                  # main / commands / protocol / state / vault / windows / error
+│  ├─ src/                  # main / commands / protocol / state / vault
+│  │                        # windows / hotkeys / tray / platform_win / error
 │  ├─ crypto/               # §8 密钥体系（独立 crate，不依赖 Tauri）
 │  ├─ db/                   # §9 存储：schema / memo / stats / blobstore / backup / parse
 │  ├─ capabilities/         # Tauri 2 权限
 │  └─ tauri.conf.json
+│  └─ icons/                # 由 scripts/gen-icons.mjs 生成，勿手改
 ├─ tests/fixtures/          # 前后端共用的对照表
-└─ scripts/                 # subset-fonts / gen-parse-fixtures
+└─ scripts/                 # subset-fonts / gen-parse-fixtures / gen-icons
 ```
 
 ## 前后端怎么分（§4.4）
@@ -48,6 +50,15 @@ npm test                       # 前端单测
 cargo test -p zhiyan-crypto    # 加密层，秒级（不依赖 Tauri）
 cargo test -p zhiyan-db        # 存储层，秒级（同上）
 npm run tauri dev              # 完整应用
+```
+
+`src-tauri/src/platform_win.rs` 在 Linux 上整个是空的，打错一个 API 名字要到
+发布构建才发现。交叉检查一遍：
+
+```sh
+sudo apt-get install gcc-mingw-w64-x86-64
+rustup target add x86_64-pc-windows-gnu
+cargo check -p zhiyan --target x86_64-pc-windows-gnu
 ```
 
 存储层默认跑普通 SQLite（编译快）。**加密路径要单独跑一遍**：
@@ -78,6 +89,7 @@ ZHIYAN_FONT_SRC=/path/to/fonts npm run subset-fonts
 Windows 发布构建：
 
 ```sh
+node scripts/gen-icons.mjs
 npm run tauri build -- --features sqlcipher
 ```
 
@@ -108,6 +120,12 @@ npm run tauri build -- --features sqlcipher
   `util.js` 的 `dayKey` 一致，而那份用的是 WebView 的本地时间。
 - **同时要密钥和库时，先 `with_dek` 再 `read`/`write`**。顺序反了会死锁，
   而死锁只在并发压上来时才出现。
+- **热键注册失败必须可见**（§5.4）。静默失败会让用户以为软件坏了——按下去
+  没反应又没有提示，只能得出「这功能是假的」这个结论。
+- **`platform.js` 的每个出口都返回 Promise**，哪怕浏览器分支没有异步的事要做。
+  时而 Promise 时而裸值的 API，只会在浏览器里挂，Tauri 里跑得好好的。
+- **图标由 `scripts/gen-icons.mjs` 生成**，不手改。缺 `icons/icon.ico` 时
+  Windows 构建直接失败，而这件事在 Linux 上开发时完全看不出来。
 
 上面几条里能被静态检查挡住的，CI 里都挡了。
 
@@ -119,7 +137,9 @@ npm run tauri build -- --features sqlcipher
 | 二 | 密钥体系 / 信封 / 恢复码（§8） | ✅ `src-tauri/crypto` |
 | 三 | SQLCipher / FTS5 / 墓碑 / blob / 备份（§7、§9） | ✅ `src-tauri/db` |
 | 四 | IPC 命令层 + 免密启动 + `zhiyan://` 协议 + UUID 迁移 | ✅ |
-| 五 | 全局热键 / 托盘 / Snap Layouts / 前台焦点 / 打包（§5、§11） | |
+| 五 | 全局热键 / 托盘 / Snap Layouts / 前台焦点 / 打包（§5、§11） | ✅ |
+
+发布步骤（签名、更新源、AUMID、自查清单）见 [`docs/release.md`](docs/release.md)。
 
 与文档的逐条对照（含我做过的取舍与两处待你确认的）见
 [`docs/tauri-decisions.md`](docs/tauri-decisions.md)。

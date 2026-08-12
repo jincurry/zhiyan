@@ -1,0 +1,48 @@
+# cargo-deny 的配置（§12.3：依赖供应链）。
+#
+# 加密与存储这两层的依赖出问题代价最高——一个有已知漏洞的 AEAD 实现
+# 或者一个会 panic 的 SQL 解析器，影响的是所有用户的全部数据。
+#
+# 校准原则：**只在我们能动手的事情上失败。** 一个天天因为「Tauri 依赖的
+# GTK3 绑定不再维护」而红的检查，两周内就会被人加上 `continue-on-error`，
+# 那时候它连真的漏洞也拦不住了。
+
+[advisories]
+# 有已知漏洞、或者版本被撤回，一律失败
+yanked = "deny"
+# 「不再维护」只看**工作区直接依赖**。传递依赖里的 unmaintained 我们做不了什么：
+# gtk-rs 那一串是 Tauri 在 Linux 上拉的，而我们发的是 Windows 版。
+unmaintained = "workspace"
+
+[licenses]
+# 只放行宽松许可证。GPL 类会传染到整个安装包，而我们是 Apache-2.0
+allow = [
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "MIT",
+  "MIT-0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Unicode-3.0",
+  "Unicode-DFS-2016",
+  "Zlib",
+  "CC0-1.0",
+  "MPL-2.0",              # 文件级传染，单独引用不影响我们的许可
+  "BSL-1.0",
+  "OpenSSL",              # SQLCipher 走 vendored OpenSSL
+  "CDLA-Permissive-2.0",  # webpki 的根证书清单（数据许可，非代码）
+]
+confidence-threshold = 0.9
+
+[bans]
+# 同一个 crate 出现多个版本只警告不拦：Tauri 的依赖树里这很常见，
+# 拦下来会变成天天在改无关的版本号
+multiple-versions = "warn"
+# 通配符版本号要拦——但我们自己的 path 子 crate 不算
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

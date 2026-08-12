@@ -10,8 +10,10 @@ license = "Apache-2.0"
 repository = "https://github.com/jincurry/zhiyan"
 
 [workspace.dependencies]
-zhiyan-crypto = { path = "src-tauri/crypto" }
-zhiyan-db = { path = "src-tauri/db" }
+# 带上 version 而不只是 path：不写的话它是个通配符依赖，cargo-deny 会拦
+# （通配符依赖会让「锁定某个版本」失效），发布到 registry 时也必须有
+zhiyan-crypto = { path = "src-tauri/crypto", version = "0.1.0" }
+zhiyan-db = { path = "src-tauri/db", version = "0.1.0" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

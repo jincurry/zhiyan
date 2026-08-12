@@ -395,6 +395,52 @@ pub fn import_legacy(state: State<'_, AppState>, json: String) -> AppResult<Lega
     state.with_dek(|dek| state.write(|s| Ok(s.import_legacy(state.blobs(), dek, &json, now)?)))
 }
 
+// ── 运行时自检（§4.2）───────────────────────────────────────────
+
+/// 目标最低 Chromium 大版本（§4.2）。
+///
+/// 原型用到的 `color-mix()`、`backdrop-filter`、`::-webkit-scrollbar`、
+/// `aspect-ratio`、`:has()`、正则后行断言都要这个版本以上。
+/// 低于它不是「样式差一点」，是整块整块的界面塌掉。
+pub const CHROMIUM_MIN: u32 = 111;
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeReport {
+    /// 注册表里读到的 WebView2 Evergreen 运行时版本。
+    ///
+    /// `None` 有两种可能：真没装，或者装的是 Fixed Version（不写这个键）。
+    /// 所以**它为 None 时不能直接说「没装 WebView2」**——应用都跑起来了，
+    /// 显然是装了的。真正判「没装」是安装器的活。
+    pub webview2: Option<String>,
+    /// 上面那个版本的大版本号，与 Chromium 大版本一致。
+    pub webview2_major: Option<u32>,
+    pub chromium_min: u32,
+    /// 版本够不够。读不到版本时按「够」处理——宁可漏报也不误报，
+    /// 一个假的「请升级 Edge」会让用户去做一件没用的事。
+    pub chromium_ok: bool,
+}
+
+#[tauri::command]
+pub fn runtime_report() -> RuntimeReport {
+    #[cfg(windows)]
+    let version = crate::platform_win::webview2_version();
+    #[cfg(not(windows))]
+    let version: Option<String> = None;
+
+    let major = version
+        .as_deref()
+        .and_then(|v| v.split('.').next())
+        .and_then(|v| v.parse::<u32>().ok());
+
+    RuntimeReport {
+        webview2: version,
+        webview2_major: major,
+        chromium_min: CHROMIUM_MIN,
+        chromium_ok: major.map(|m| m >= CHROMIUM_MIN).unwrap_or(true),
+    }
+}
+
 // ── 锁定与设备（§9.4）───────────────────────────────────────────
 
 /// 立刻锁定：清掉内存里的密钥并关掉库。
@@ -435,6 +481,16 @@ mod tests {
             tag: tag.map(str::to_string),
             tz_offset: Some(8 * 60), // 东八区
             ..Default::default()
+        }
+    }
+
+    #[test]
+    fn 运行时自检读不到版本时不误报() {
+        // 假的「请升级 Edge」会让用户去做一件没用的事
+        let r = runtime_report();
+        assert_eq!(r.chromium_min, CHROMIUM_MIN);
+        if r.webview2_major.is_none() {
+            assert!(r.chromium_ok, "读不到版本时必须按「够」处理");
         }
     }
 
@@ -561,5 +617,80 @@ mod tests {
         // 前端 state.js 的 filter() 可能不带 sort
         let raw: IpcFilter = serde_json::from_str("{}").unwrap();
         assert_eq!(raw.into_filter().unwrap().sort, Sort::New);
+    }
+}
+
+// ── 自动更新（§11.3）────────────────────────────────────────────
+
+/// 检查更新的结果。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateCheck {
+    /// 有没有可用的新版本。
+    pub available: bool,
+    pub version: Option<String>,
+    /// 这个构建**有没有配置更新源**。
+    ///
+    /// 单独报出来而不是混进 `available: false`：两者对用户的含义完全不同。
+    /// 「已是最新」与「这个构建根本不会更新」不能显示成同一句话——
+    /// 后者意味着他要自己去看有没有新版。
+    pub configured: bool,
+}
+
+/// 这个构建配了更新源吗。
+///
+/// 仓库里 `plugins.updater` 是**空的**（`endpoints: []`、`pubkey: ""`）。
+/// 不能整段省掉——插件初始化时会因为读不到配置直接 panic，应用根本起不来；
+/// 也不能塞一个占位公钥——那看起来像配好了，实际谁都验不过，
+/// 而失败信息是「签名不匹配」，排查方向会完全跑偏。
+///
+/// 空的 `endpoints` 是明确的「没配」，空的 `pubkey` 验什么都失败（fail closed）。
+fn updater_configured(app: &tauri::AppHandle) -> bool {
+    app.config()
+        .plugins
+        .0
+        .get("updater")
+        .and_then(|v| v.get("endpoints"))
+        .and_then(|v| v.as_array())
+        .map(|a| !a.is_empty())
+        .unwrap_or(false)
+}
+
+#[tauri::command]
+pub async fn check_update(app: tauri::AppHandle) -> AppResult<UpdateCheck> {
+    use tauri_plugin_updater::UpdaterExt;
+
+    if !updater_configured(&app) {
+        return Ok(UpdateCheck {
+            available: false,
+            version: None,
+            configured: false,
+        });
+    }
+
+    let updater = match app.updater() {
+        Ok(u) => u,
+        Err(e) => {
+            tracing::info!("更新器不可用：{e}");
+            return Ok(UpdateCheck {
+                available: false,
+                version: None,
+                configured: false,
+            });
+        }
+    };
+
+    match updater.check().await {
+        Ok(Some(update)) => Ok(UpdateCheck {
+            available: true,
+            version: Some(update.version.clone()),
+            configured: true,
+        }),
+        Ok(None) => Ok(UpdateCheck {
+            available: false,
+            version: None,
+            configured: true,
+        }),
+        Err(e) => Err(AppError::Window(format!("检查更新失败：{e}"))),
     }
 }

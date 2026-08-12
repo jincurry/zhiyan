@@ -57,12 +57,10 @@
 | 项 | 文档 | 计划 |
 |---|---|---|
 | 虚拟滚动 | §6.3 万条 60fps | 附录 A 标 P1；分页已就位，虚拟化待做 |
-| 前台焦点抢占 | §5.3 ① `AttachThreadInput` | 阶段五 |
-| Snap Layouts 子类化 | §5.2 ② | 阶段五 |
-| 全局热键 + 冲突检测 + 改键 UI | §5.4 | 阶段五 |
-| 托盘 / Jump List / AUMID / 自启 / Mica | §5.5 | 阶段五 |
-| WebView2 运行时检测 | §4.2 | 阶段五（打包） |
-| Chromium 111 下限检测 | §4.2 | 阶段五 |
+| Jump List | §5.5 | 见下方第十节，**已明确不做**并写清了理由 |
+| 代码签名 | §11.2 | 有真实成本，要先定证书方案。步骤在 `docs/release.md` |
+| 更新源与 Ed25519 密钥 | §11.3 | 同上；仓库里 `plugins.updater` 是空的，界面如实说「未配置」 |
+| 更新失败回滚 | §11.3「必须做」 | 需要真实更新链路才验证得了 |
 | 账号面板接真实鉴权 | 附录 A P2 | 后续；DEK 的落地位置已就位，换成从 `protected_dek` 解出来即可 |
 | 同步五态显示 | 附录 A P2 | 后续 |
 
@@ -79,9 +77,9 @@
 
 ```
 src-tauri/
-├─ src/            # main / windows / error / state
+├─ src/            # main / commands / protocol / state / vault / windows / hotkeys / tray / platform_win
 ├─ crypto/         # §8：keys / envelope / recovery
-└─ db/             # §9：待阶段三
+└─ db/             # §9：schema / memo / stats / blobstore / backup / legacy / parse
 ```
 
 **② §5.1 的隐藏断点是笔误。** 右栏断点按原型 CSS 取 **1120px**，
@@ -181,7 +179,64 @@ CSP 里除了 `zhiyan:` 还写上了 `http://zhiyan.localhost`：Windows 上自�
 密钥取不到时起一个未解锁的空壳，`app_info` 如实报 `unlocked: false`。
 让进程直接退出的话，用户看到的是一个闪一下就没了的窗口——那种失败最难报告。
 
-## 九、新发现的一处出入（需你确认）
+## 九、阶段五：Windows 那一层
+
+**① 交叉编译检查抓到四处 API 错。**
+
+`platform_win.rs` 在 Linux 上整个是空的（`#![cfg(windows)]`），所以它**编译不到**——
+打错一个模块路径要到发布构建才发现。装了 mingw 之后
+`cargo check --target x86_64-pc-windows-gnu` 当场抓到：
+`AttachThreadInput` 在 `System::Threading` 而不是 `UI::Input::KeyboardAndMouse`、
+`ScreenToClient` 在 `Graphics::Gdi`、`RegOpenKeyExW` 第三个参数不是 `Option`、
+`LocalFree` 不收 `Option`。最后那条在阶段四就写下了，一直没被编译过。
+
+CI 的 Windows job 因此从「只 build」加成了 clippy + test + build 三条。
+
+**② 图标必须有 `icon.ico`，缺了 Windows 构建直接失败。**
+
+这件事在 Linux 上完全看不出来——`cargo build` 一点问题都没有。
+写了 `scripts/gen-icons.mjs`（纯 Node 手写 PNG 与 ICO 编码，不引图形库），
+CI 里比对生成结果，改了图案忘了提交会红。
+
+托盘另出明暗两套：通知区底色跟着任务栏走，一套颜色总有一边糊在背景里。
+
+**③ `plugins.updater` 不能省也不能填假的。**
+
+整段省掉的话插件初始化直接 panic——**应用起不来，而 `cargo build` 一点问题都没有**，
+是跑起来才发现的。填一个占位公钥更糟：看起来像配好了，实际谁都验不过，
+失败信息还是「签名不匹配」，排查方向会完全跑偏。
+
+现在留的是 `endpoints: []` + `pubkey: ""`：前者是明确的「没配」，
+后者验什么都失败（fail closed）。设置页显示「此构建未配置更新源，需要手动下载新版」，
+而不是「已是最新」——两句话对用户的含义完全不同。
+
+**④ 自启要读 `StartupApproved`，不能只看注册表项在不在。**
+
+§5.5 点名了这个坑：用户在「设置 → 应用 → 启动」里关掉之后，
+`HKCU\...\Run` 下的项**仍然在**。只读它的话设置页显示「已开启」而实际不自启，
+用户重装、反复开关都解决不了——因为开关本来就是开的。
+
+**⑤ 托盘左键：可见但没聚焦时是「拿到前面来」，不是「收起去」。**
+
+只看 `is_visible` 的话，点托盘会把一个被别的窗口压住的知言直接藏掉，
+而用户的意思几乎总是相反的。
+
+## 十、Jump List 明确不做
+
+§5.5 说它「成本很低但原生感强」。**成本不低。**
+
+`ICustomDestinationList` 是一套 COM 接口，要 `CoInitializeEx`、
+`IObjectCollection`、给每个条目建 `IShellLinkW` 并写
+`System.AppUserModel.ID` 属性；还要一条命令行启动路径（`--quick` / `--week`）
+和与之配套的单实例转发。
+
+真正的问题是**它在这里一行都验证不了**：不像子类化和 DPAPI 那样至少能靠
+交叉编译保证签名正确，Jump List 的失败模式是「装完之后右键任务栏什么都没有」，
+只有真机能看见。写一段没验证过的 COM 然后说它能用，比暂时不做更糟。
+
+需要的前置条件（AUMID、单实例、托盘菜单）都已经就位，补它是一次独立的小改动。
+
+## 十一、恢复码与备份密钥（2026-08-12 已确认）
 
 **恢复码的熵与版式对不上。** §8.4 写「RK 为 **128 位**随机数，编成
 **10 组 5 字符** Base32」，并给了 10 组的示例。但 10×5 = 50 个 Base32 字符
@@ -193,10 +248,10 @@ CSP 里除了 `zhiyan:` 还写上了 `http://zhiyan.localhost`：Windows 上自�
 - 熵只多不少，满足「至少 128 位」的安全要求；
 - 多出的 10 bit 做校验位，抄错一位有约 99.9% 的概率被当场挡下。
 
-**若服务端或别的客户端按 128 bit 实现，这里要改。** 改动很小（换个
-`RECOVERY_ENTROPY_LEN` 加填充位），但两端必须一致，否则恢复码互不认。
+**已确认按 240 bit 实现**（2026-08-12）。服务端与其他客户端要按这个来：
+240 bit 熵 + 10 bit 校验位，编成 10 组 5 个 Crockford Base32 字符。
 
-**备份密钥。** §9.7 说 `.zbk`「用 DEK 加密」，但 §8.2 的派生清单里没有备份这一档。
-直接拿 DEK 当对称密钥用，等于让备份文件与将来任何也「用 DEK」的东西共用一把钥匙，
-所以补了一档 `HKDF(DEK,"backup")`。多派生一层的代价是一次 HKDF，
-换的是密钥不复用。若服务端将来也要读 `.zbk`，这个 info 串要对齐。
+**备份密钥：`HKDF(DEK,"backup")`，已确认。** §9.7 说 `.zbk`「用 DEK 加密」，
+但 §8.2 的派生清单里没有备份这一档。直接拿 DEK 当对称密钥用，等于让备份文件与
+将来任何也「用 DEK」的东西共用一把钥匙。多派生一层的代价是一次 HKDF，
+换的是密钥不复用。info 串定为 `zhiyan/v1/backup`，服务端将来要读 `.zbk` 时对齐它。

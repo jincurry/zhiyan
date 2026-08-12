@@ -126,7 +126,7 @@ mod dpapi {
         let bytes = unsafe { std::slice::from_raw_parts(out.pbData, out.cbData as usize) }.to_vec();
         unsafe {
             std::ptr::write_bytes(out.pbData, 0, out.cbData as usize);
-            let _ = LocalFree(Some(HLOCAL(out.pbData as *mut _)));
+            let _ = LocalFree(HLOCAL(out.pbData as *mut _));
         }
         bytes
     }
