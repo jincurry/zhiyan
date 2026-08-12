@@ -1,0 +1,23 @@
+[package]
+name = "zhiyan-crypto"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "知言端到端加密（设计文档 §8）"
+
+[dependencies]
+argon2.workspace = true
+hkdf.workspace = true
+sha2.workspace = true
+hmac.workspace = true
+chacha20poly1305.workspace = true
+zeroize.workspace = true
+rand.workspace = true
+subtle.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+hex.workspace = true

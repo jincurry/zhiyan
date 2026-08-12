@@ -18,7 +18,9 @@ zhiyan/
 │  ├─ test/                 # node --test
 │  └─ assets/fonts/         # 子集化 woff2（不入库）
 ├─ src-tauri/
-│  ├─ src/                  # main / windows / error / state（crypto、db、sync 待后续阶段）
+│  ├─ src/                  # main / windows / error / state
+│  ├─ crypto/               # §8 密钥体系（独立 crate，不依赖 Tauri）
+│  ├─ db/                   # §9 SQLCipher（独立 crate）
 │  ├─ capabilities/         # Tauri 2 权限
 │  └─ tauri.conf.json
 └─ scripts/subset-fonts.mjs
@@ -42,6 +44,7 @@ UI 跑在 WebView2 里，与 Rust 之间隔着一道 **IPC 边界**：
 npm install
 npm run dev                    # Vite dev server，浏览器里就能开（走内存 mock）
 npm test                       # 前端单测
+cargo test -p zhiyan-crypto    # 加密层，秒级（不依赖 Tauri）
 npm run tauri dev              # 完整应用
 ```
 
@@ -85,7 +88,7 @@ npm run tauri build -- --features sqlcipher
 | 阶段 | 内容 | 状态 |
 |---|---|---|
 | 一 | Tauri 骨架 + 前端从原型落地 | ✅ |
-| 二 | 密钥体系 / 信封 / 恢复码（§8） | |
+| 二 | 密钥体系 / 信封 / 恢复码（§8） | ✅ `src-tauri/crypto` |
 | 三 | SQLCipher / FTS5 / 墓碑 / blob（§9） | |
 | 四 | IPC 命令层接线 + UUID 迁移 + `zhiyan://` 协议 | |
 | 五 | 全局热键 / 托盘 / Snap Layouts / 前台焦点 / 打包（§5、§11） | |

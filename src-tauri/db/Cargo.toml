@@ -1,0 +1,27 @@
+[package]
+name = "zhiyan-db"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "知言本地存储：SQLCipher 分表 + FTS5（设计文档 §9）"
+
+[features]
+default = ["bundled"]
+# 开发与 CI：普通 SQLite，跑得快，不必编译 OpenSSL
+bundled = ["rusqlite/bundled"]
+# 发布必须开：整库加密（§9.2）
+sqlcipher = ["rusqlite/bundled-sqlcipher-vendored-openssl"]
+
+[dependencies]
+zhiyan-crypto.workspace = true
+rusqlite = { workspace = true, features = ["uuid", "blob", "functions"] }
+uuid.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+hex.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

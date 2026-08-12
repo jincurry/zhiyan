@@ -1,6 +1,38 @@
 [workspace]
 resolver = "2"
-members = ["src-tauri"]
+members = ["src-tauri", "src-tauri/crypto", "src-tauri/db"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+license = "Apache-2.0"
+repository = "https://github.com/jincurry/zhiyan"
+
+[workspace.dependencies]
+zhiyan-crypto = { path = "src-tauri/crypto" }
+zhiyan-db = { path = "src-tauri/db" }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+thiserror = "2"
+uuid = { version = "1", features = ["v4", "serde"] }
+time = { version = "0.3", features = ["macros"] }
+tracing = "0.1"
+
+# §8.2：一律定长数组 + Zeroize
+argon2 = "0.5"
+hkdf = "0.12"
+sha2 = "0.10"
+hmac = "0.12"
+chacha20poly1305 = "0.10"
+zeroize = { version = "1", features = ["derive"] }
+rand = "0.8"
+subtle = "2"
+hex = "0.4"
+
+rusqlite = "0.32"
 
 [profile.release]
 opt-level = 3

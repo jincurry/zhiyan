@@ -1,11 +1,11 @@
 [package]
 name = "zhiyan"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.82"
-license = "Apache-2.0"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
 description = "知言 · 卡片笔记"
-repository = "https://github.com/jincurry/zhiyan"
 
 [[bin]]
 name = "zhiyan"
@@ -15,21 +15,24 @@ path = "src/main.rs"
 tauri-build = "2.6"
 
 [dependencies]
+zhiyan-crypto.workspace = true
+zhiyan-db.workspace = true
+
 tauri = "2.11"
 tauri-plugin-global-shortcut = "2.3"
 tauri-plugin-dialog = "2.7"
 tauri-plugin-opener = "2.5"
 
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-anyhow = "1"
-thiserror = "2"
-uuid = { version = "1", features = ["v4", "serde"] }
-time = { version = "0.3", features = ["macros"] }
-tracing = "0.1"
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+time.workspace = true
+tracing.workspace = true
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [features]
 default = []
-# 发布必须开：本地库整体加密（§9.2）。实体在阶段三接上。
-sqlcipher = []
+# 发布必须开：本地库整体加密（§9.2）
+sqlcipher = ["zhiyan-db/sqlcipher"]
