@@ -14,6 +14,7 @@ import {
 import { render as md, highlight } from './markdown.js';
 import { state, byId } from './state.js';
 import * as store from './store.js';
+import { blobUrl } from './store.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -159,14 +160,20 @@ function relations(m) {
 /**
  * 附件缩略图。
  *
- * 阶段一里 `blobs` 还是空的。阶段四会把它换成 `asset:` 或自定义协议的 URL——
- * **不能写临时文件**，那等于把解密后的图片明文落盘，加密就白做了。
+ * 地址走 `zhiyan://`：密文在 Rust 侧读进来、在进程内解密、字节直接进 WebView。
+ * **不能写临时文件再 `file://` 加载**——那等于把明文落回磁盘，而且那个文件的
+ * 生命周期没人管得住（§12.2）。
  */
 function images(m) {
   if (!m.blobs?.length) return '';
   return (
     '<div class="mimg">' +
-    m.blobs.map((b) => `<img src="${esc(b.url ?? '')}" alt="" data-act="lightbox" data-arg="${esc(b.url ?? '')}">`).join('') +
+    m.blobs
+      .map((b) => {
+        const url = esc(blobUrl(b.sha256));
+        return `<img src="${url}" alt="" loading="lazy" data-act="lightbox" data-arg="${url}">`;
+      })
+      .join('') +
     '</div>'
   );
 }

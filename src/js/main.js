@@ -98,11 +98,27 @@ async function save() {
   if (!text && !state.drafts.length) return;
 
   const editing = state.editId;
-  await store.upsertMemo({ id: editing, text, source: 'app' });
+  await store.upsertMemo({ id: editing, text, source: 'app', blobs: state.drafts });
   ed.clearComposer();
   await refresh();
   ov.toast(editing ? '已更新' : '已存下');
   if (!editing) scrollTop();
+}
+
+/**
+ * 选图。
+ *
+ * 用 `<input type="file">` 而不是 Tauri 的文件对话框：这样**不需要任何
+ * 文件系统权限**——浏览器把选中的字节直接给我们，路径从头到尾没出现过。
+ * 开 `fs:allow-*` 才是把攻击面拉开的做法（§12.1）。
+ */
+function pickImage() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/png,image/jpeg,image/gif,image/webp,image/avif';
+  input.multiple = true;
+  input.addEventListener('change', () => ed.ingestFiles([...input.files], (m) => ov.toast(m)));
+  input.click();
 }
 
 async function deleteMemo(id) {
@@ -168,20 +184,29 @@ function download(name, content, isDataUrl = false) {
   a.click();
 }
 
+/**
+ * 全量导出。
+ *
+ * **走 Rust 侧的 `export` 命令**，不在这边拼。早先是把全部片语拉过来自己拼
+ * Markdown，有两个问题：一是 `list_memos` 有单次上限，超了会被静默截断；
+ * 二是同一份格式在 Rust 与 JS 各有一版，迟早会分叉。
+ *
+ * 路径由用户在系统对话框里选，前端不传路径（§12.1）。
+ */
 async function exportMarkdown() {
-  const all = await store.listMemos({ view: 'all', sort: 'new' }, null, 10000);
-  const body = all
-    .map((m) => {
-      const d = new Date(m.createdAt);
-      const stamp =
-        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ` +
-        `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-      return `## ${stamp}\n\n${m.text}\n`;
-    })
-    .join('\n---\n\n');
-  download('知言导出.md', `# 知言\n\n共 ${all.length} 条\n\n---\n\n${body}`);
-  // 导出的 Markdown 本质上是明文，这一句不能省
-  ov.toast('已导出 Markdown（明文）');
+  // 明文这件事必须先说，不能导完了才提
+  ov.confirmSheet(
+    '导出 Markdown',
+    '导出的文件是明文的，任何人拿到都能直接读。放进网盘或聊天工具之前请想一下。',
+    async () => {
+      try {
+        const path = await store.exportTo('markdown');
+        ov.toast(path ? '已导出（明文）' : '已取消');
+      } catch {
+        ov.toast('导出失败');
+      }
+    }
+  );
 }
 
 // ── 主题 ────────────────────────────────────────────────────────
@@ -261,7 +286,8 @@ const ACTIONS = {
   preview: () => ed.togglePreview(),
   save,
   'cancel-edit': () => ed.cancelEdit(),
-  'pick-image': () => ov.toast('附件要等阶段四的 blob 存储接上'),
+  'pick-image': () => pickImage(),
+  'draft-remove': (arg) => ed.removeDraft(Number(arg)),
 
   // 卡片
   'memo-pin': async (_, el) => {
@@ -397,6 +423,8 @@ document.addEventListener('mouseover', (e) => {
 // ── 键盘 ────────────────────────────────────────────────────────
 
 ed.guardComposition($('input'));
+// 粘贴与拖放直接落盘成附件（§7.3 ①）
+ed.attachImageIngest($('input'), (msg) => ov.toast(msg));
 
 $('input').addEventListener('input', () => {
   ed.refresh();
@@ -502,6 +530,8 @@ addEventListener('resize', reportMaxButton);
   try {
     const info = await store.appInfo();
     console.info(`知言 ${info.version} · ${info.platform} · 本地库加密：${info.encryptedStore}`);
+    // 未解锁时列表会全是 locked 错误。现在只是提示一句，解锁引导界面在阶段五
+    if (info.unlocked === false) ov.toast('本地库没能打开，改动不会被保存');
   } catch {
     // 拿不到就算了，不该因为一条信息性命令挡住启动
   }
@@ -510,4 +540,10 @@ addEventListener('resize', reportMaxButton);
   rollRecall();
   ed.refresh();
   reportMaxButton();
+
+  // 墓碑与孤儿附件的回收（§7.3 ②：墓碑保留 90 天）。
+  // 放在首屏画完之后：它可能要删几百个文件，抢在前面会让启动看起来很慢
+  setTimeout(() => {
+    store.runGc().catch(() => {}); // 回收失败不该打扰用户，下次启动会再试
+  }, 3000);
 })();

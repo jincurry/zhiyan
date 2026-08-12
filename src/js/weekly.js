@@ -62,9 +62,9 @@ export function aggregate(memos, from, to) {
 
 export async function openWeek(offset = 0) {
   const [from, to] = weekRange(offset);
-  // 回顾要的是这一周的全部，不是当前筛选下的——所以单独查一次
-  // 一周的量级有上限，一次多要一些反而比翻页省往返
-  const all = await store.listMemos({ view: 'all', sort: 'old' }, null, 2000);
+  // 回顾要的是这一周的全部，不是当前筛选下的——所以带上区间单独查一次。
+  // 早先是「拉两千条回来自己筛」，那会被 list_memos 的单次上限静默截断
+  const all = await store.listAll({ view: 'all', sort: 'old', from, to });
   const a = aggregate(all, from, to);
 
   const thisWeek = offset === 0;
@@ -147,7 +147,7 @@ function cell(value, label) {
 /** 导出这一周为 Markdown。**导出的是明文**，这是它的本分（§10.7）。 */
 export async function exportWeek(offset) {
   const [from, to] = weekRange(offset);
-  const all = await store.listMemos({ view: 'all', sort: 'old' }, null, 2000);
+  const all = await store.listAll({ view: 'all', sort: 'old', from, to });
   const a = aggregate(all, from, to);
 
   let out = `# 每周回顾 ${isoDate(from)} – ${isoDate(to - 864e5)}\n\n`;

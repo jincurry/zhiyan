@@ -23,7 +23,7 @@ export async function createMock() {
   const clone = (m) => (m ? JSON.parse(JSON.stringify(m)) : null);
   const find = (id) => memos.find((m) => m.id === id);
 
-  function filtered({ view = 'all', tag = null, query = '', sort = 'new' } = {}) {
+  function filtered({ view = 'all', tag = null, query = '', sort = 'new', from = null, to = null } = {}) {
     if (view === 'trash') return trash.slice().sort((a, b) => b.deletedAt - a.deletedAt);
 
     const list = memos.filter((m) => {
@@ -35,6 +35,9 @@ export async function createMock() {
         if (!tags.some((t) => t === tag || t.startsWith(tag + '/'))) return false;
       }
       if (query && !m.text.toLowerCase().includes(query.toLowerCase())) return false;
+      // 显式区间：每周回顾用它取某一周
+      if (from !== null && m.createdAt < from) return false;
+      if (to !== null && m.createdAt >= to) return false;
       return true;
     });
 
@@ -201,6 +204,13 @@ export async function createMock() {
       };
     },
 
+    async backlinks({ id, limit }) {
+      return memos
+        .filter((m) => m.id !== id && m.text.includes(`^${id}]]`))
+        .slice(0, limit)
+        .map(clone);
+    },
+
     async putBlob() {
       throw new Error('mock 不支持附件：它需要真实的内容寻址存储');
     },
@@ -208,6 +218,20 @@ export async function createMock() {
     async exportTo() {
       throw new Error('mock 不支持导出：落盘只能由 Rust 侧做');
     },
+
+    async importLegacy() {
+      throw new Error('mock 不支持迁移：它要写真实的库');
+    },
+
+    async runGc() {
+      return { tombstones: 0, blobs: 0 };
+    },
+
+    // 浏览器里没有密钥，锁定是个空操作。做成 no-op 而不是抛错，
+    // 是为了让「空闲锁定」这类逻辑在浏览器里也能走完整条路径
+    async lockStore() {},
+    async unlockStore() {},
+    async forgetDevice() {},
 
     async getKv({ k }) {
       return kv.get(k) ?? null;
@@ -217,7 +241,7 @@ export async function createMock() {
     },
 
     async appInfo() {
-      return { version: '0.1.0-dev', platform: 'web', encryptedStore: false };
+      return { version: '0.1.0-dev', platform: 'web', encryptedStore: false, unlocked: true };
     },
   };
 }

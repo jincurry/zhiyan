@@ -26,6 +26,7 @@
 
 mod backup;
 mod blobstore;
+mod legacy;
 mod memo;
 mod model;
 mod parse;
@@ -34,6 +35,7 @@ mod stats;
 
 pub use backup::Snapshot;
 pub use blobstore::BlobStore;
+pub use legacy::LegacyReport;
 pub use model::{
     BlobMeta, Clock, Counts, Filter, HeatCell, Memo, MemoInput, Op, Sort, Source, Stats, View,
 };

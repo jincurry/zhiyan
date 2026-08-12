@@ -43,6 +43,19 @@ jobs:
             exit 1
           fi
 
+      - name: 附件地址必须走 zhiyan:// 协议
+        # §12.2：绝不能把附件解密成 blob:/data:/file:// 再喂给 <img>。
+        # 前两者要先把明文读进 JS 和 DOM，而 DOM 会被 devtools、崩溃转储、
+        # 以及「另存为」原样带走；后者直接就是把明文写回磁盘。
+        #
+        # 只查渲染附件的那两个模块。main.js 里的 createObjectURL 是导出下载用的，
+        # 那是明文导出的本分（§9.7），与附件无关。
+        run: |
+          if grep -rnE "createObjectURL|readAsDataURL|data:image" src/js/render.js src/js/editor.js; then
+            echo "::error::附件必须走 zhiyan:// 自定义协议，不能落地成 blob:/data:"
+            exit 1
+          fi
+
       - name: 生产构建不得含开发用 mock
         run: |
           if grep -rl "createMock" dist/ 2>/dev/null; then

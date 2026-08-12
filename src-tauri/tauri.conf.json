@@ -40,7 +40,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' zhiyan: data:; style-src 'self' 'unsafe-inline'; script-src 'self'",
+      "csp": "default-src 'self'; img-src 'self' zhiyan: http://zhiyan.localhost https://zhiyan.localhost data:; style-src 'self' 'unsafe-inline'; script-src 'self'",
       "capabilities": [
         "default"
       ]

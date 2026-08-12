@@ -5,12 +5,19 @@
 //! 路径可走，而不是等到最后才发现序列化形状对不上。
 
 use serde::Serialize;
-use tauri::{Manager, Window};
+use tauri::{Manager, State, Window};
 
 use crate::error::{AppError, AppResult};
+use crate::state::AppState;
 
 /// 应用自身的信息。前端用它显示版本号，也用来判断「我确实跑在 Tauri 里」。
+///
+/// `camelCase` 是必须的：`mock.js` 返回的是 `encryptedStore`，两边对不上的话
+/// 设置页会读到 `undefined`，然后**如实地**把「未加密」显示成「已加密」——
+/// 因为 `undefined` 在那个位置会走进 falsy 分支，而 falsy 分支的文案是安全的那一档。
+/// 这种错法不会报错，只会一直说谎。
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AppInfo {
     pub version: &'static str,
     pub platform: &'static str,
@@ -18,15 +25,21 @@ pub struct AppInfo {
     ///
     /// 前端在设置页里如实显示它。**不能假设发布构建一定开了 sqlcipher 特性**——
     /// 显示一个假的「已加密」比不显示更糟。
+    ///
+    /// 这是**运行时探测**出来的（`PRAGMA cipher_version`），不是 `cfg!` 猜的：
+    /// `PRAGMA key` 在普通 SQLite 上会被静默忽略，库照开、数据照写，只是全是明文。
     pub encrypted_store: bool,
+    /// 库是否已打开。密钥取不到时应用照样起得来，界面该显示解锁引导。
+    pub unlocked: bool,
 }
 
 #[tauri::command]
-pub fn app_info() -> AppInfo {
+pub fn app_info(state: State<'_, AppState>) -> AppInfo {
     AppInfo {
         version: env!("CARGO_PKG_VERSION"),
         platform: std::env::consts::OS,
-        encrypted_store: cfg!(feature = "sqlcipher"),
+        encrypted_store: state.is_encrypted(),
+        unlocked: state.is_unlocked(),
     }
 }
 
@@ -126,16 +139,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn 应用信息如实报告加密状态() {
-        let info = app_info();
-        assert_eq!(info.encrypted_store, cfg!(feature = "sqlcipher"));
-        assert!(!info.version.is_empty());
-    }
-
-    #[test]
-    fn 应用信息可序列化() {
-        let json = serde_json::to_value(app_info()).unwrap();
+    fn 应用信息序列化成前端认得的形状() {
+        let info = AppInfo {
+            version: "0.1.0",
+            platform: "windows",
+            encrypted_store: true,
+            unlocked: true,
+        };
+        let json = serde_json::to_value(info).unwrap();
         assert!(json["version"].is_string());
-        assert!(json["encryptedStore"].is_boolean() || json["encrypted_store"].is_boolean());
+        assert!(json["encryptedStore"].is_boolean(), "{json}");
+        assert!(json["unlocked"].is_boolean(), "{json}");
     }
 }

@@ -10,6 +10,7 @@
 import { countChars, esc, snippet } from './util.js';
 import { render, continueList } from './markdown.js';
 import { state } from './state.js';
+import { putBlob, blobUrl } from './store.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -122,6 +123,10 @@ export function togglePreview() {
 
 export function startEdit(memo) {
   state.editId = memo.id;
+  // 附件要一起带进草稿。不带的话保存时 blobs 是空的，图会被静默丢掉——
+  // 而用户只是改了个错别字
+  state.drafts = [...(memo.blobs ?? [])];
+  drawThumbs();
   $('input').value = memo.text;
   $('composer').classList.add('editing');
   $('cancelBtn').hidden = false;
@@ -134,6 +139,7 @@ export function startEdit(memo) {
 export function cancelEdit() {
   state.editId = null;
   state.drafts = [];
+  drawThumbs();
   $('input').value = '';
   $('composer').classList.remove('editing');
   $('cancelBtn').hidden = true;
@@ -145,6 +151,7 @@ export function cancelEdit() {
 export function clearComposer() {
   state.editId = null;
   state.drafts = [];
+  drawThumbs();
   $('input').value = '';
   $('composer').classList.remove('editing');
   $('cancelBtn').hidden = true;
@@ -271,4 +278,118 @@ export function handleEnter(e, ta) {
     insertText('\n' + next, ta);
   }
   return true;
+}
+
+// ── 附件（§7.3 ①、§8.5）────────────────────────────────────────
+
+/**
+ * 允许的图片类型。与 Rust 侧 `put_blob` 的白名单一致。
+ *
+ * **不放 `image/svg+xml`**：SVG 里能写脚本，走 `zhiyan://` 出去就是一个 XSS。
+ */
+const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif'];
+
+/** IPC 的单次载荷上限（§9.6 给的建议值）。 */
+const MAX_BLOB_BYTES = 10 * 1024 * 1024;
+
+/**
+ * 读出图片的像素尺寸。
+ *
+ * 在这一侧读而不是让 Rust 解码：为了两个整数把图片解码库拖进 Rust 的依赖树，
+ * 换来的是安装包体积和一批解析器攻击面。浏览器本来就要解这张图。
+ */
+async function dimensions(blob) {
+  try {
+    const bmp = await createImageBitmap(blob);
+    const wh = { w: bmp.width, h: bmp.height };
+    bmp.close();
+    return wh;
+  } catch {
+    return { w: null, h: null }; // 尺寸只影响排版，读不到不该挡住保存
+  }
+}
+
+/**
+ * 收下一批文件，落成内容寻址的附件。
+ *
+ * 返回成功入库的数量。**不抛错**：贴了五张图坏了一张时，另外四张该照常进去。
+ */
+export async function ingestFiles(files, onProgress) {
+  let ok = 0;
+  for (const file of files) {
+    if (!IMAGE_TYPES.includes(file.type)) {
+      onProgress?.(`不支持的图片格式：${file.type || '未知'}`);
+      continue;
+    }
+    if (file.size > MAX_BLOB_BYTES) {
+      onProgress?.(`图片超过 ${MAX_BLOB_BYTES / 1048576}MB，请先压缩`);
+      continue;
+    }
+    try {
+      const { w, h } = await dimensions(file);
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      state.drafts.push(await putBlob(bytes, file.type, w, h));
+      ok++;
+    } catch {
+      onProgress?.('这张图没能存下');
+    }
+  }
+  if (ok) drawThumbs();
+  refresh();
+  return ok;
+}
+
+/**
+ * 给编辑器装上粘贴与拖放。
+ *
+ * 图片**在这一步就落盘**，不是等到保存时才传——用户贴完图往往还要写一段话，
+ * 那几秒足够把加密和写盘做完。代价是撤销时会留下没人引用的附件，
+ * 由 `run_gc` 回收（refcount 为 0 的会被清掉）。
+ */
+export function attachImageIngest(ta, onProgress) {
+  ta.addEventListener('paste', (e) => {
+    const files = [...(e.clipboardData?.files ?? [])];
+    if (!files.length) return; // 纯文本粘贴走默认行为
+    e.preventDefault();
+    ingestFiles(files, onProgress);
+  });
+
+  // 拖放要挡在整个编辑器上：拖到 textarea 边上一点就落空，很难对准
+  const box = $('composer');
+  for (const type of ['dragover', 'dragenter']) {
+    box.addEventListener(type, (e) => {
+      if (e.dataTransfer?.types?.includes('Files')) {
+        e.preventDefault();
+        box.classList.add('dropping');
+      }
+    });
+  }
+  for (const type of ['dragleave', 'drop']) {
+    box.addEventListener(type, () => box.classList.remove('dropping'));
+  }
+  box.addEventListener('drop', (e) => {
+    const files = [...(e.dataTransfer?.files ?? [])];
+    if (!files.length) return;
+    e.preventDefault();
+    ingestFiles(files, onProgress);
+  });
+}
+
+/** 画编辑器下方的缩略图条。 */
+export function drawThumbs() {
+  const box = $('thumbs');
+  box.innerHTML = state.drafts
+    .map(
+      (b, i) =>
+        `<figure><img src="${esc(blobUrl(b.sha256))}" alt="">` +
+        `<button data-act="draft-remove" data-arg="${i}" title="移除">×</button></figure>`
+    )
+    .join('');
+}
+
+/** 移除一张待存的图。只是解除引用，字节由 `run_gc` 回收。 */
+export function removeDraft(i) {
+  state.drafts.splice(i, 1);
+  drawThumbs();
+  refresh();
 }

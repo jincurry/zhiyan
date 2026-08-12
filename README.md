@@ -18,7 +18,7 @@ zhiyan/
 │  ├─ test/                 # node --test
 │  └─ assets/fonts/         # 子集化 woff2（不入库）
 ├─ src-tauri/
-│  ├─ src/                  # main / windows / error / state
+│  ├─ src/                  # main / commands / protocol / state / vault / windows / error
 │  ├─ crypto/               # §8 密钥体系（独立 crate，不依赖 Tauri）
 │  ├─ db/                   # §9 存储：schema / memo / stats / blobstore / backup / parse
 │  ├─ capabilities/         # Tauri 2 权限
@@ -101,6 +101,13 @@ npm run tauri build -- --features sqlcipher
 - **标签 / 引用 / 字数有两份实现**（`util.js` 与 `zhiyan-db::parse`），
   用 `tests/fixtures/parse-parity.json` 这张共用对照表钉死。分叉的表现是
   「界面上高亮的标签点侧栏筛不出来」，很难查。
+- **附件走 `zhiyan://` 在内存里解密**，绝不解密到临时文件再 `file://` 加载——
+  那等于把明文写回磁盘，而且那个文件的生命周期没人管得住。响应必须带
+  `Cache-Control: no-store`，否则 WebView2 会把明文缓存到磁盘上。
+- **时区由前端传给 Rust**，Rust 不自己去问系统。热力图的分桶口径必须与
+  `util.js` 的 `dayKey` 一致，而那份用的是 WebView 的本地时间。
+- **同时要密钥和库时，先 `with_dek` 再 `read`/`write`**。顺序反了会死锁，
+  而死锁只在并发压上来时才出现。
 
 上面几条里能被静态检查挡住的，CI 里都挡了。
 
@@ -111,7 +118,7 @@ npm run tauri build -- --features sqlcipher
 | 一 | Tauri 骨架 + 前端从原型落地 | ✅ |
 | 二 | 密钥体系 / 信封 / 恢复码（§8） | ✅ `src-tauri/crypto` |
 | 三 | SQLCipher / FTS5 / 墓碑 / blob / 备份（§7、§9） | ✅ `src-tauri/db` |
-| 四 | IPC 命令层接线 + UUID 迁移 + `zhiyan://` 协议 | |
+| 四 | IPC 命令层 + 免密启动 + `zhiyan://` 协议 + UUID 迁移 | ✅ |
 | 五 | 全局热键 / 托盘 / Snap Layouts / 前台焦点 / 打包（§5、§11） | |
 
 与文档的逐条对照（含我做过的取舍与两处待你确认的）见

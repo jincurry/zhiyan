@@ -31,6 +31,21 @@ uuid.workspace = true
 time.workspace = true
 tracing.workspace = true
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+zeroize.workspace = true
+hex.workspace = true
+
+# §9.4：DEK 存 Windows Credential Manager
+keyring = { version = "3", features = ["windows-native", "apple-native", "linux-native"] }
+
+[target.'cfg(windows)'.dependencies]
+# §9.4：存进凭据管理器之前先过一道 DPAPI（用户作用域）
+windows = { version = "0.58", features = [
+  "Win32_Foundation",
+  "Win32_Security_Cryptography",
+] }
+
+[dev-dependencies]
+tempfile = "3"
 
 [features]
 default = []
